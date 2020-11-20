@@ -19,19 +19,18 @@ The author compiled daily-return data for these assets. Their comulative-return 
 
 <img src="cumret.png" width="800">
 
-The following plots weekly returns for the assets. It also plots (downside-) risk measures such as (Modified Extreme Shortfall) "Modified ES" estimated using rolling windows. You can also see those estimates getting breached, e.g., for [BPCL] in late 2018.
+The following plots weekly returns for the assets. It also plots (downside-) risk measures such as (Modified Extreme Shortfall) "Modified ES" estimated using rolling windows. You can also see those estimates getting breached, e.g., that breach for [BPCL] in late 2018 tells us that if all we hold is [BPCL] stock, we must be willing to tolerate a weekly (notional) "extreme" loss of over 30% and a more-routine (notional) loss of 8%-15% weekly. If we are unwilling to tolerate that downside risk, being fully invested in [BPCL] would be unsuitable for us and we must re-consider altering our holdings.
 
 <img src="relative_barvar.png" width="800">
 
-Popular media mentions Standard Deviation (`StdDev`) as a measure of risk. Following plot on the left shows (Boxplots of the return distribution of) the assets sorted in increasing order of `StdDev`. The plot on right has assets sorted in increasing order of `Modified ES`, which is a more-coherent measure now recommended as part of BASEL norms too. You can see [BPCL] has relatively the least (estimated) `StdDev` but the most `Modified ES`:
+Popular media mentions Standard Deviation (`StdDev`) as a measure of risk. Following plot on the left shows (Boxplots of the return distribution of) the assets sorted in increasing order of `StdDev`. The plot on right has assets sorted in increasing order of `Modified ES`. (Also known as Extreme Tail Loss or Conditional Value at Risk, ES is a more-coherent measure that's now recommended as part of BASEL norms too.) You can see [BPCL] has relatively the least (estimated) `StdDev` but the most `Modified ES`, and there are outliers as well which could affect stability of estimates (and cannot be ignored for more-conservative investors):
 
 <img src="equity_box.png" width="400">
 <img src="R_ES_box.png" width="400">
 
 
-## Optimization
-Following are outputs through a Quadratic Utility optimization using method ROI:
-
+## Quadratic-Utility Portfolio Optimization using Method ROI
+Following are outputs from this approach:
 ```{R, eval=FALSE}
 > extractStats(opt_qu)
        mean          ES         out      w.BPCL      w.NBCC w.QUICKHEAL      w.TSLA 
@@ -40,13 +39,65 @@ Following are outputs through a Quadratic Utility optimization using method ROI:
      BPCL      NBCC QUICKHEAL      TSLA 
 0.2601309 0.0000000 0.0000000 0.7398691
 ```
-The return-risk profiles of this optimized portfolio and its assets are charted as shown:
+While the optimal portfolio (for the given objectives and constraints) shows zero weight allocated to [NBCC] and [QUICKHEAL], [BPCL] gets a `0.26` weight, and [TSLA] gets the rest (totalling to `1.0`). So, there was merit in exploring a portfolio perspective for informing the friend's investment decision. The return-risk profiles of this optimized portfolio and its assets are charted on the left as shown, and the Efficient Frontier enveloping the feasible portfolios is shown on the right:
 
 <img src="chartRiskReward.png" width="400">
+<img src="opt_qu-meanETLquROI-EfficientFrontier.png" width="400">
 
+Optimizing with rebalancing shows the following allocation of weights, e.g., increasing weightage in recent times to [TSLA]:
+
+<img src="bt_qu-meanETLquROI-wts.png" width="400">
+
+And here are annualized measures and a chart summarizing the performance:
+```{R, eval=FALSE}
+> bt_qu.retPf <- Return.portfolio(R = returns, weights = extractWeights(bt_qu))
+> colnames(bt_qu.retPf) # <- "btMeanESquROI"
+[1] "portfolio.returns"
+> colnames(bt_qu.retPf) <- "returns-btMeanESquROI"
+> table.AnnualizedReturns(R=bt_qu.retPf)
+                          returns-btMeanESquROI
+Annualized Return                        0.4210
+Annualized Std Dev                       0.4009
+Annualized Sharpe (Rf=0%)                1.0501
+> charts.PerformanceSummary(R=bt_qu.retPf)
+```
+
+<img src="bt_qu-meanETLquROI-perfSummary.png" width="800">
+
+What the above chart shows also is that to get that Cumulative Return, one has to withstand Drawdowns of over 40%.
+
+
+## Random-Sample Method for Portfolio Optimization
+Now, let's consider this different approach. The return-risk profiles of this optimized portfolio and the corresponding weights are charted as shown:
+
+<img src="barplot-meanETLrandom1.png" width="400">
+
+The chart shows the Random portfolios generated in grey. The optimal portfolio (in blue with some of its neighbours) has been selected from those. The orange dot shows an Equal-Weighted portfolio. The following optimization output shows weights allocated to all assets this time:
+```{R, eval=FALSE}
+> print(opt_meanETL)
+***********************************
+PortfolioAnalytics Optimization
+***********************************
+
+Call:
+optimize.portfolio(R = R, portfolio = meanETL, optimize_method = "random", 
+    search_size = 2000, trace = TRUE)
+
+Optimal Weights:
+     BPCL      NBCC QUICKHEAL      TSLA 
+    0.142     0.594     0.052     0.192 
+
+Objective Measures:
+    mean 
+0.002675 
+
+
+    ETL 
+0.06271 
+```
 
 ## Way Forward
-One can consider methods other than ROI too. Rebalancing and rolling performance can be compared for different approaches. Then one can choose a suitable portfolio approach for the longer term.
+Now informed through this research viewpoint, the friend can choose a suitable portfolio approach for the longer term.
 
 ```{r, eval=FALSE, echo=FALSE}
 print("Directly from optimization outputs, consider knitting performance charts and weights")
