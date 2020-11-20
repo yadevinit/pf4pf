@@ -4,12 +4,46 @@ Nay Ratna
 Background
 ----------
 
-In early 2020-Nov, this [author](mailto:yadevinit@gmail.com) messaged his former schoolmates: "Struggling with Portfolio Optimization with an objective of maximizing Net Present Value. Didn't realize optimization was such a hard problem: maximizing (mean) return while also minimizing risk (Extreme Shortfall)". Some friends joked on the understandability. A friend asked if the author was into shares trading and messaged: "I have some. But down by 65%. Bought 6 years back. Sort of stuck. Not getting any positive solutions to mitigate the losses."
+In early 2020-Nov, this [author](mailto:yadevinit@gmail.com) messaged his former schoolmates: "Struggling with Portfolio Optimization with an objective of maximizing Net Present Value. Didn't realize optimization was such a hard problem: maximizing (mean) return while also minimizing risk (Extreme Shortfall)". Some friends joked on the understandability. A friend asked if the author was into shares trading and messaged: "I have some. But down by 65%. Bought 6 years back. Sort of stuck. Not getting any positive solutions to mitigate the losses." Over a conversation, this friend agreed that we typically take such decisions one asset at a time: in isolation and considering each single asset's XIRR from point of purchase. The alternative generated was to explore a (composite) portfolio perspective, e.g., which welcomes assets that move differently to provide a superior risk-adjusted return.
 
-TBD.
+Related courseware [Portfolio Management](https://www.youtube.com/watch?v=8TJQhQ2GZ0Y) is sobering though long. If you want to shorten the viewing, see after the 1-hour mark, e.g., here's a screenshot of [asset diversification that can offer a "near-free lunch"](./diversificationNearFreeLunch-2assetPf.png).
+
+Assets
+------
+
+The friend held shares of [NBCC](https://finance.yahoo.com/quote/NBCC.BO), [BPCL](https://finance.yahoo.com/quote/BPCL.BO), and [QUICKHEAL](https://finance.yahoo.com/quote/QUICKHEAL.BO). He was considering buying [TSLA](https://finance.yahoo.com/quote/TSLA). Some of the stocks held are considered "Ratna" category; refer [List of Maharatna, Navratna and Miniratna CPSEs](https://dpe.gov.in/about-us/divisions/list-maharatna-navratna-and-miniratna-cpses) or [Public sector undertakings in India](https://en.wikipedia.org/wiki/Public_sector_undertakings_in_India). Whether to say nay to Ratna was the dilemma he was dealing with; hence, this research viewpoint got its title.
+
+The author compiled daily-return data for these assets. Their comulative-return performance shows [TSLA](https://finance.yahoo.com/quote/TSLA) has moved up significantly in the recent year:
+
+<img src="cumret.png" width="800">
+
+The following plots weekly returns for the assets. It also plots (downside-) risk measures such as (Modified Extreme Shortfall) "Modified ES" estimated using rolling windows. You can also see those estimates getting breached, e.g., for [BPCL](https://finance.yahoo.com/quote/BPCL.BO) in late 2018.
+
+<img src="relative_barvar.png" width="800">
+
+Popular media mentions Standard Deviation (`StdDev`) as a measure of risk. Following plot on the left shows (Boxplots of the return distribution of) the assets sorted in increasing order of `StdDev`. The plot on right has assets sorted in increasing order of `Modified ES`, which is a more-coherent measure now recommended as part of BASEL norms too. You can see [BPCL](https://finance.yahoo.com/quote/BPCL.BO) has relatively the least (estimated) `StdDev` but the most `Modified ES`:
+
+<img src="equity_box.png" width="400"> <img src="R_ES_box.png" width="400">
+
+Optimization
+------------
+
+Following are outputs through a Quadratic Utility optimization using method ROI:
 
 ``` r
-print("From optimization outputs, generate performance charts and weights")
+> extractStats(opt_qu)
+       mean          ES         out      w.BPCL      w.NBCC w.QUICKHEAL      w.TSLA 
+ 0.01149878  0.11971382  0.11971382  0.26013091  0.00000000  0.00000000  0.73986909 
+> extractWeights(opt_qu)
+     BPCL      NBCC QUICKHEAL      TSLA 
+0.2601309 0.0000000 0.0000000 0.7398691
 ```
 
-    ## [1] "From optimization outputs, generate performance charts and weights"
+The return-risk profiles of this optimized portfolio and its assets are charted as shown:
+
+<img src="chartRiskReward.png" width="400">
+
+Way Forward
+-----------
+
+One can consider methods other than ROI too. Rebalancing and rolling performance can be compared for different approaches. Then one can choose a suitable portfolio approach for the longer term.
