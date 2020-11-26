@@ -8,7 +8,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## What's on "Menu" for this Research Viewpoint
-1. In [Nay Ratna], optimal portfolios are located at very different positions on the risk-return chart for 
+1. In a previous viewpoint [Nay Ratna], optimal portfolios are located at very different positions on the risk-return chart for 
 the Efficient Frontier. While different optimization approaches (including objectives, constraints, and rebalancing)
 can differ in their outputs, let's check, e.g., whether one approach is tilting to minimize risk while the other is
 inclined to maximizing return at the same optimization time.
@@ -69,7 +69,7 @@ These can be seen in following session output:
 So inadvertently, the author's portfolio programming could introduce risk, especially considering that the author dealt with (optimization in) Operations Research as `1/(7*2*4) <= 2%` of undergraduate-engineering subjects in the 1980s and the [Workshop on Advanced Applications of `R` in Portfolio Management] attended was in 2011. Serves him right for not brushing up the pre-requisites and for steering away now from $\lambda$ and other (Math or) Greek foundations! And if you're wondering what's that $\lambda$ or `risk_aversion`, you could (pluck the courage to) look up [Risk Aversion], which in turn, also introduces Constant Relative Risk Aversion (CRRA). Whew! There's so much to know; it's endless and can get increasingly difficult. But we've got something to get done, in finite time.
 
 ## Risk-free
-What's landed are: cyclone Nivar around India's southwest coast, [The Market Mafia], and various conversations, including with that ex classmate and a "newbie" who's doubled his money on the US stock markets since 2019 summer using [Robinhood]. `www` search shows more market happenings: [Penny Stocks on Fire in India as Robinhood Traders Pile In] and [Zerodha's Indian 'Robinhood' dream has an Ant problem] ... And I'm writing now on Risk-free.
+What's landed are: cyclone Nivar around India's southwest coast, [The Market Mafia], and various conversations, including with that ex classmate and a "newbie" who's doubled his money on the US stock markets since 2019 summer using [Robinhood]. `www` search shows more market happenings: [Penny Stocks on Fire in India as Robinhood Traders Pile In] and [Zerodha's Indian 'Robinhood' dream has an Ant problem] ... There was also a conversation with a corporate business consultant who advised that stocks and their companies be also looked at from industry and other perspectives. And I'm writing now on Risk-free.
 
 Following plots show chosen relatively risk-free index of Government securities as per [NIFTY 10 yr Benchmark G-Sec Index]. (The similar-sounding [NIFTY 10 yr Benchmark G-Sec (Clean Price) index] says: "Accrued Interest and coupon payments are not considered for index calculations." So, it's use would be for a different purpose.) Why not use shorter- or longer-duration bonds here, you might ask. The author chose this because this index gives us the farthest data, going back to 2001. Cumulative returns are on the left, and weekly returns are to the right:
 
@@ -111,7 +111,9 @@ And here's the code-session output and following plots (for the CPI index on lef
 <img src="./riskfreeNayRatna/INDCPALTT01IXNBM.png" width="400">
 <img src="./riskfreeNayRatna/INDCPALTT01IXNBMret.png" width="400">
 
-Beware: this way of looking at CPI growth from one month to the next might not match how inflation is typically studied for national policy. Here, the intention is to have its variation in the background so that we see in perspective what's being labelled Risk-free. For example, CPI's 3rd quartile being `0.011` tells us that a quarter of months see CPI growing by `1.1%` or more, which puts an upward pressure on the portfolio growth individual investors must seek to protect household wealth from eroding in value or purchasing power. Maybe we could consider hedging currency and country risk as well, but let's leave that for another viewpoint later. What the author realized through all this is that there are so many people, including Government, who work to stabilize the (economy and) financial world for individuals. Without that work, one can see how choppy the world could be. Building on those shoulders of stability, the author is creating a next level, maybe a speck in the vast cosmos.
+Beware: this way of looking at CPI growth from one month to the next might not match how inflation is typically studied for national policy. Here, the intention is to have its variation in the background so that we see in perspective what's being labelled Risk-free. For example, CPI's 3rd quartile being `0.011` tells us that a quarter of months see CPI growing by `1.1%` or more, which puts an upward pressure on the portfolio growth individual investors must seek to protect household wealth from eroding in value or purchasing power. Maybe we could consider hedging currency and country risk as well, but let's leave that for another viewpoint later.
+
+What the author realized through all this is that there are so many people, including Government, who work to stabilize the (economy and) financial world for individuals. Without that work, one can see how choppy the world could be. Building on those shoulders of stability, the author is creating a next level, maybe a speck in the vast cosmos.
 
 
 
