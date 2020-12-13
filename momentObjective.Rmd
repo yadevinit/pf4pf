@@ -1,9 +1,7 @@
 ---
 title: "Exploring Objectives with `R`-Optimization Infrastructure (`ROI`)"
-output:
-  pdf_document: default
-  html_document:
-    df_print: paged
+author: Vinit Kaushik
+output: github_document
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 ---
 
@@ -13,7 +11,7 @@ knitr::opts_chunk$set(cache = TRUE, cache.path='cache/')
 # knitr::opts_chunk$set(fig.width=12, fig.height=8)
 ```
 
-We shall adapt various vignettes for this research viewpoint, while building further on what's discussed at earlier viewpoint [Risk-free Nay Ratna]. That way, we raise workability and avoid inadvertent programming errors. From each heading's hyperlink, readers can also refer to the vignette for the corresponding heading's text to aid understanding. As a vignette says, this is to "solve complex optimization problems." The reader might find this viewpoint technically challenging, but wading through this will help the reader prefer a smaller set of Objectives to refine further (e.g., using custom Moments) and test them in out-of-sample settings using re-balancing, before possibly considering investing using them. The author recommends that the reader at least browse through the content under heading [6.4 Maximize quadratic utility with ROI]; that seems to call for further support using a coherent risk measure `ES`, maybe superior Moment estimates, and out-of-sample test via re-balancing.
+We shall adapt various vignettes for this research viewpoint, while building further on what's discussed at earlier viewpoint [Risk-free Nay Ratna]. That way, we raise workability and avoid inadvertent programming errors. From each heading's hyperlink, readers can also refer to the vignette for the corresponding heading's text to aid understanding. As a vignette says, this is to "solve complex optimization problems." The reader might find this viewpoint technically challenging, but wading through this will help the reader prefer a smaller set of Objectives to refine further (e.g., using custom Moments) and test them in out-of-sample settings using re-balancing, before possibly considering investing using them. The [author](mailto:yadevinit@gmail.com) recommends that the reader at least browse through the content under heading [6.4 Maximize quadratic utility with ROI]; that seems to call for further support using a coherent risk measure `ES`, maybe superior Moment estimates, and out-of-sample test via re-balancing.
 
 # A. [Custom Moment and Objective Functions 2018-May] Adapted
 
@@ -275,6 +273,7 @@ chart.Weights(opt_etl)
 
 
 # C. [Maximizing Modified Sharpe Ratio Demo 2014] Adapted
+This gets you what's called as a tangency portfolio.
 ```{r maxModifiedSharpeSTARR}
 #' This script demonstrates how to solve a constrained portfolio optimization 
 #' problem to maximize modified Sharpe Ratio using ES as the risk measure.
