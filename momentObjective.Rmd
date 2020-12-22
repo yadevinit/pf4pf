@@ -1,140 +1,26 @@
 ---
 title: "Exploring Objectives with `R`-Optimization Infrastructure (`ROI`)"
-author: Vinit Kaushik
+author: Vinit Kaushik.
 output: github_document
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 ---
 
-```{r Setup, message=F, include=FALSE}
+```{r, setup, message=F, include=FALSE}
 # date: !r Sys.Date()
 knitr::opts_chunk$set(cache = TRUE, cache.path='cache/')
 # knitr::opts_chunk$set(fig.width=12, fig.height=8)
 ```
 
-We shall adapt various vignettes for this research viewpoint, while building further on what's discussed at earlier viewpoint [Risk-free Nay Ratna]. That way, we raise workability and avoid inadvertent programming errors. From each heading's hyperlink, readers can also refer to the vignette for the corresponding heading's text to aid understanding. As a vignette says, this is to "solve complex optimization problems." The reader might find this viewpoint technically challenging, but wading through this will help the reader prefer a smaller set of Objectives to refine further (e.g., using custom Moments) and test them in out-of-sample settings using re-balancing, before possibly considering investing using them. The [author](mailto:yadevinit@gmail.com) recommends that the reader at least browse through the content under heading [6.4 Maximize quadratic utility with ROI]; that seems to call for further support using a coherent risk measure `ES`, maybe superior Moment estimates, and out-of-sample test via re-balancing.
+We shall adapt various vignettes for this research viewpoint, while building further on what's discussed at earlier viewpoint [Risk-free Nay Ratna]. That way, we raise workability and avoid inadvertent programming errors. From each heading's hyperlink, readers can also refer to the vignette for the corresponding heading's text to aid understanding. As a vignette says, this is to "solve complex optimization problems." The reader might find this viewpoint technically challenging, but wading through this will help the reader prefer a smaller set of Objectives to refine further (e.g., using custom Moments) and have them tested in out-of-sample settings using re-balancing, before possibly considering investing using them. The [author](mailto:yadevinit@gmail.com) recommends that the reader at least browse through the content under heading [6.4 Maximize quadratic utility with ROI]; that seems to call for further support using a coherent risk measure `ES`, maybe superior Moment estimates, and out-of-sample test via re-balancing. And in case the reader wishes to challenge this viewpoint, study its `R`-source code, or extend it, (./momentObjective.Rmd) has the `R`markdown including libraries (packages) and other function definitions.
+
+The data the author compiled for this viewpoint has daily price data from 2010-July for a universe of about 100 assets (stocks, indices, bonds, commodities, realty, and others) across India (considered an Emerging Market), USA (considered a Developed Market), and other regions of the world. Weekly *log returns* from that are used in this study, as recommended by some vignettes and researchers. (Given `p1` and `p2` successive asset prices, ordinarily return would be `-1 + p2/p1`; in contrast, *log return* would be `log(p2/p1) = log(p2) - log(p1)`.)
 
 # A. [Custom Moment and Objective Functions 2018-May] Adapted
 
 ## 1 Getting Started: Load Packages and Data
 
-```{r dataPrepR, echo=FALSE}
-CaGRtoCwGR <- function(CaGR, aByw=52/1){
-  CwGR <- -1 + exp((1/aByw) * log(1+CaGR))
-  return(CwGR)
-}
-myCountNA0omits <- function(myCol){
-  exna0 <- na.omit(myCol)
-  exna0 <- exna0[which(exna0 != 0.0)] # coz 0.0 log return is likely to be missing data.
-  return(length(exna0))
-}
-colTail1.asset <- function(assetName, yNonNA0, yNonNA0.which){
-  ixVec <- yNonNA0[yNonNA0.which[, assetName], assetName]
-  if(length(ixVec) > 0){
-    asseTail <- tail(ixVec, 1)
-  } else {
-    gNamesNA0 <<- c(gNamesNA0, assetName)
-    asseTail <- NA # Note: tail(c()) == NULL
-  }
-  return(as.numeric(asseTail))
-}
-colTail1 <- function(yNonNA0, yNonNA0.which){
-  ans <- do.call(c, lapply(colnames(yNonNA0), FUN=colTail1.asset, yNonNA0, yNonNA0.which))
-  return(ans)
-}
-getLastNonNA0 <- function(i, y, cLookBackRows=(7-1)){
-  # ref https://stackoverflow.com/questions/9992421/constant-size-period-apply-with-irregularly-spaced-endpoints-in-r
-  stopifnot(i > cLookBackRows)
-  yNonNA0 <- y[(i - cLookBackRows) : i,]
-  yNonNA0.which <- !(is.na(yNonNA0) | yNonNA0 == 0) # Beware: not scalar || `or`.
-  tmp.d3 <- colTail1(yNonNA0, yNonNA0.which)
-  #yNonNA0.which.exists <- all(yNonNA0.which) # Beware: single-value (as vector) returned by any().
-  #stopifnot(all(yNonNA0.which.exists))
-  #yNonNA0 <- yNonNA0[yNonNA0.which,]
-  ytail <- xts(t(tmp.d3), index(y)[i]) # Without t(), error:
-    # [Error in xts(tmp.d3, index(y)[i]) : NROW(x) must match length(order.by)].
-  colnames(ytail) <- colnames(y)
-  return(ytail)
-}
-myAssetsWithReturnsOverCompletePeriod <- function(argIsLogReturns=TRUE, argix,
-  dateRange=cDateRange, myPeriod="weeks", minProp=1.0){
-  require(xts)
-  x <- argix[dateRange,]; print(periodicity(x)); print(dim(x))
-  ep <- endpoints(x, on=myPeriod, k=1) # k=number of sub periods to aggregate on
-  if(argIsLogReturns){
-    print("Argument given to be summable (daily) log returns.")
-    paout <- period.apply(x, INDEX=ep, FUN=colSums, na.rm=TRUE)
-    countNA0omits <- apply(paout, 2, myCountNA0omits)
-    # countNonNA <- colSums(!is.na(df)) # count non NAs
-    mustDropCols <- ((countNA0omits / (length(ep) - 1)) < minProp) # coz ep includes 0 at start.
-    ans <- paout[, mustDropCols] # subset(paout, select=-mustDropCols)
-  } else {
-    # Use lapply to call your function at each endpoint (removing first endpoint which == zero) 
-    # do.call(rbind, lapply(endpoints(x, 'months')[-1], FUN=getLastNonNA0, y=x))
-    gNamesNA0 <<- c()
-    tmp2.ep <- endpoints(x, on="weeks", k=1)[-1] # coz 0,2,9,... can happen!
-    tmp2.tail1 <- getLastNonNA0(i=tmp2.ep[2], y=x, cLookBackRows=(tmp2.ep[2]-tmp2.ep[1] -1))
-    x <- x[, setdiff(colnames(x), unique(gNamesNA0))] # Drop columns that miss data.
-    gNamesNA0.bak <<- gNamesNA0; gNamesNA0 <<- c()
-    lastNonNA0 <- do.call(rbind, lapply(tail(tmp2.ep, -1), FUN=getLastNonNA0, y=x))
-    stopifnot(length(gNamesNA0) == 0) # Assert there are no more dropped names.
-    ans <- xts::diff.xts(lastNonNA0, lag=1, differences=1, log=TRUE) # , arithmetic=TRUE
-    ans <- ans[-1,] # Drop row 1 which has NAs.
-  }
-  print(dim(ans))
-  return(ans)
-}
-flagExtremes <- function(assetName, argix, absLim=0.30){
-  argixVec <- argix[, assetName]
-  mustFlag <- which(abs(argixVec) >= absLim)
-  if(length(mustFlag) > 0){
-    ans <- argixVec[mustFlag]
-  } else {
-    ans <- NA
-  }
-  return(ans)
-}
-```
-
 ```{r GettingStarted}
-library(ROI)
-library(ROI.plugin.glpk)
-library(ROI.plugin.quadprog)
-# library(DEoptim)
-library(PortfolioAnalytics)
-
-date()
-matchVignette <- FALSE # TRUE iff vignette data (including dates) and outputs are to be matched
-quRiskAversion <- c(0.25, 2, 10, 25)[ifelse(matchVignette, 1, 2)]
-  # Alt: 10 which shows up in Example 4. 25 is within 20-30 range mentioned in CMU paper.
-if(matchVignette){
-  data(edhec)
-    # Use the first 4 columns in edhec for a returns object
-  cDateRange <- '::2014-01-31' # Was '::2018-05-17' coz specified vignette's date is 2018-May-17
-  R <- edhec[cDateRange, 1:4] # Subset to match cDateRange, instead of tail() with 2019 data too.
-  colnames(R) <- c("CA", "CTAG", "DS", "EM")
-} else {
-  cMyPath <- "F:/pf4pf/data/indices/"; warning("cannot include others' data into repos")
-  cFileIndex <- "assets-"
-  gIx <- readRDS(file=paste0(cMyPath, cFileIndex, ".rds"))
-  cDateRange <- c("2001/", # gets earliest large slice of assets.
-    "2007/", # gets at least a window of a year to train/learn on before entering 2008 GFC.
-      # "2004/" includes GLD and GOLDBEES. Early "2006" includes SLV too.
-    "2010-07/" # TSLA data starts.
-  )[3]; cDateRange <- paste0(cDateRange, "2020-11")
-  argIsLogReturns <- FALSE
-  if(! argIsLogReturns){
-    R <- equity.data <- myAssetsWithReturnsOverCompletePeriod(argIsLogReturns, argix=gIx,
-      dateRange=cDateRange, myPeriod="weeks", minProp=1.0)
-  } else {
-    R <- equity.data <- myAssetsWithReturnsOverCompletePeriod(argIsLogReturns, argix=gIxLogR,
-      dateRange=cDateRange, myPeriod="weeks", minProp=1.0)
-  }
-}
-str(R)
-head(R, 2)
-tail(R, 2)
-# Get a character vector of the fund names
-funds <- colnames(R)
+source("gettingStarted.R")
 ```
 
 ## 2 Setting the Portfolio Moments
@@ -211,7 +97,7 @@ if(matchVignette){
 
 ## 6.2 Maximize mean return with ROI
 ```{r maxMeanROI}
-maxret <- add.objective(portfolio=init, type="return", name="mean")
+maxret <- add.objective(portfolio=init.portFL, type="return", name="mean")
 print(maxret)
 # Run the optimization.
 opt_maxret <- optimize.portfolio(R=R, portfolio=maxret, optimize_method="ROI", trace=TRUE)
@@ -231,7 +117,7 @@ You might recall earlier research viewpoint [Nay Ratna] sharing a commitment to 
 Taleb argues that "For social justice, focus on symmetry and risk sharing. You cannot make profits and transfer the risks to others, as bankers and large corporations do ... Forcing skin in the game corrects this asymmetry better than thousands of laws and regulations."
 
 ```{r maxQuadUtilityROI}
-qu <- add.objective(portfolio=init, type="return", name="mean")
+qu <- add.objective(portfolio=init.portFL, type="return", name="mean")
 qu <- add.objective(portfolio=qu, type="risk", name="var", risk_aversion=quRiskAversion)
 # Run the optimization.
 opt_qu <- optimize.portfolio(R=R, portfolio=qu, optimize_method="ROI", trace=TRUE)
@@ -252,10 +138,18 @@ plot(opt_qu, risk.col="StdDev", return.col="mean",
 chart.Weights(opt_qu)
 ```
 
+[A Machine Learning Integrated Portfolio Rebalance Framework with Risk-Aversion Adjustment] offers some insights:
+> Though the mean-variance
+model is widely used in practice, it has two main well-known limitations. The solution of the
+mean-variance model is consistent with the principle of utility maximization only if the asset
+returns are normally distributed or the utility function is quadratic, where the normality and
+quadraticity are not usually satisfied in the real financial world. ...
+The efficient solutions of the bi-objective mean-risk portfolios can typically be achieved by solvingone of the three optimization models: (1) maximizing the expected return subject to an upper-bounded budget level on the risk measure; (2) minimizing the risk measure while requiring the mean return to exceed an acceptable threshold value; (3) maximizing the risk-adjusted mean return, which takes the form of mean return less the risk measure multiplied by a risk-aversion coefficient selected by the investor.  This risk-aversion coefficient represents the preference or risk attitude of the investor toward the market environment, which is a reflection of the market trend.
+
 ## 6.5 Minimize expected tail loss with ROI
 If the exploration so far is making the investor loss averse, let's take this position now, with a coherent measure of risk `ETL` (also known as `CVaR` or `ES`) instead of `StdDev`.
 ```{r minETLwithROI}
-etl <- add.objective(portfolio=init, type="risk", name="ETL")
+etl <- add.objective(portfolio=init.portFL, type="risk", name="ETL")
 # Run the optimization.
 opt_etl <- optimize.portfolio(R=R, portfolio=etl, optimize_method="ROI", trace=TRUE)
 print(opt_etl)
@@ -271,9 +165,8 @@ plot(opt_etl, risk.col="ES", return.col="mean", main="ETL Optimization", chart.a
 chart.Weights(opt_etl)
 ```
 
-
 # C. [Maximizing Modified Sharpe Ratio Demo 2014] Adapted
-This gets you what's called as a tangency portfolio.
+This gets you what's called as a tangency portfolio. Positioning for a mean return beyond that tangency position forces the investor to also tolerate disproportionately-higher risk. This tangency position is visualized in the Efficienct Frontier charted ahead.
 ```{r maxModifiedSharpeSTARR}
 #' This script demonstrates how to solve a constrained portfolio optimization 
 #' problem to maximize modified Sharpe Ratio using ES as the risk measure.
@@ -301,11 +194,11 @@ maxSTARR.lo.ROI$objective_measures$mean / maxSTARR.lo.ROI$objective_measures$ES
 chart.EfficientFrontier(ef2)
 ```
 
-## Appendix
+
+# Appendix
 Here's the runtime environment used. It's reported here for reproducibility:
 ```{r Closing}
-Sys.info()[['sysname']]
-sessionInfo()
+sessionInfo() # Sys.info()[['sysname']]
 ```
 
 [Risk-free Nay Ratna]: <https://github.com/yadevinit/pf4pf/blob/main/riskfreeNayRatna.md>
@@ -317,3 +210,4 @@ sessionInfo()
 [Nay Ratna]: <https://github.com/yadevinit/pf4pf/blob/main/nayRatna/nayRatna.md>
 [Maximizing Modified Sharpe Ratio Demo 2014]: <https://github.com/braverock/PortfolioAnalytics/blob/master/demo/demo_max_STARR.R>
 [R Optimization Infrastructure (`ROI`)]: <https://cran.r-project.org/package=ROI>
+[A Machine Learning Integrated Portfolio Rebalance Framework with Risk-Aversion Adjustment]: <https://www.mdpi.com/1911-8074/13/7/155>

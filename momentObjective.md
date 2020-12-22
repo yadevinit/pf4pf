@@ -1,9 +1,11 @@
 Exploring Objectives with `R`-Optimization Infrastructure (`ROI`)
 ================
-Vinit Kaushik
-December 13, 2020
+Vinit Kaushik.
+December 22, 2020
 
-We shall adapt various vignettes for this research viewpoint, while building further on what's discussed at earlier viewpoint [Risk-free Nay Ratna](https://github.com/yadevinit/pf4pf/blob/main/riskfreeNayRatna.md). That way, we raise workability and avoid inadvertent programming errors. From each heading's hyperlink, readers can also refer to the vignette for the corresponding heading's text to aid understanding. As a vignette says, this is to "solve complex optimization problems." The reader might find this viewpoint technically challenging, but wading through this will help the reader prefer a smaller set of Objectives to refine further (e.g., using custom Moments) and test them in out-of-sample settings using re-balancing, before possibly considering investing using them. The [author](mailto:yadevinit@gmail.com) recommends that the reader at least browse through the content under heading [6.4 Maximize quadratic utility with ROI](#maximize-quadratic-utility-with-roi); that seems to call for further support using a coherent risk measure `ES`, maybe superior Moment estimates, and out-of-sample test via re-balancing.
+We shall adapt various vignettes for this research viewpoint, while building further on what's discussed at earlier viewpoint [Risk-free Nay Ratna](https://github.com/yadevinit/pf4pf/blob/main/riskfreeNayRatna.md). That way, we raise workability and avoid inadvertent programming errors. From each heading's hyperlink, readers can also refer to the vignette for the corresponding heading's text to aid understanding. As a vignette says, this is to "solve complex optimization problems." The reader might find this viewpoint technically challenging, but wading through this will help the reader prefer a smaller set of Objectives to refine further (e.g., using custom Moments) and have them tested in out-of-sample settings using re-balancing, before possibly considering investing using them. The [author](mailto:yadevinit@gmail.com) recommends that the reader at least browse through the content under heading [6.4 Maximize quadratic utility with ROI](#maximize-quadratic-utility-with-roi); that seems to call for further support using a coherent risk measure `ES`, maybe superior Moment estimates, and out-of-sample test via re-balancing. And in case the reader wishes to challenge this viewpoint, study its `R`-source code, or extend it, (./momentObjective.Rmd) has the `R`markdown including libraries (packages) and other function definitions.
+
+The data the author compiled for this viewpoint has daily price data from 2010-July for a universe of about 100 assets (stocks, indices, bonds, commodities, realty, and others) across India (considered an Emerging Market), USA (considered a Developed Market), and other regions of the world. Weekly *log returns* from that are used in this study, as recommended by some vignettes and researchers. (Given `p1` and `p2` successive asset prices, ordinarily return would be `-1 + p2/p1`; in contrast, *log return* would be `log(p2/p1) = log(p2) - log(p1)`.)
 
 A. [Custom Moment and Objective Functions 2018-May](https://cran.r-project.org/web/packages/PortfolioAnalytics/vignettes/custom_moments_objectives.pdf) Adapted
 ===============================================================================================================================================================
@@ -12,57 +14,14 @@ A. [Custom Moment and Objective Functions 2018-May](https://cran.r-project.org/w
 -----------------------------------------
 
 ``` r
-library(ROI)
-library(ROI.plugin.glpk)
-library(ROI.plugin.quadprog)
-# library(DEoptim)
-library(PortfolioAnalytics)
-
-date()
+source("gettingStarted.R")
 ```
 
-    ## [1] "Sun Dec 13 23:55:14 2020"
-
-``` r
-matchVignette <- FALSE # TRUE iff vignette data (including dates) and outputs are to be matched
-quRiskAversion <- c(0.25, 2, 10, 25)[ifelse(matchVignette, 1, 2)]
-  # Alt: 10 which shows up in Example 4. 25 is within 20-30 range mentioned in CMU paper.
-if(matchVignette){
-  data(edhec)
-    # Use the first 4 columns in edhec for a returns object
-  cDateRange <- '::2014-01-31' # Was '::2018-05-17' coz specified vignette's date is 2018-May-17
-  R <- edhec[cDateRange, 1:4] # Subset to match cDateRange, instead of tail() with 2019 data too.
-  colnames(R) <- c("CA", "CTAG", "DS", "EM")
-} else {
-  cMyPath <- "F:/pf4pf/data/indices/"; warning("cannot include others' data into repos")
-  cFileIndex <- "assets-"
-  gIx <- readRDS(file=paste0(cMyPath, cFileIndex, ".rds"))
-  cDateRange <- c("2001/", # gets earliest large slice of assets.
-    "2007/", # gets at least a window of a year to train/learn on before entering 2008 GFC.
-      # "2004/" includes GLD and GOLDBEES. Early "2006" includes SLV too.
-    "2010-07/" # TSLA data starts.
-  )[3]; cDateRange <- paste0(cDateRange, "2020-11")
-  argIsLogReturns <- FALSE
-  if(! argIsLogReturns){
-    R <- equity.data <- myAssetsWithReturnsOverCompletePeriod(argIsLogReturns, argix=gIx,
-      dateRange=cDateRange, myPeriod="weeks", minProp=1.0)
-  } else {
-    R <- equity.data <- myAssetsWithReturnsOverCompletePeriod(argIsLogReturns, argix=gIxLogR,
-      dateRange=cDateRange, myPeriod="weeks", minProp=1.0)
-  }
-}
-```
-
-    ## Warning: cannot include others' data into repos
+    ## Warning in eval(ei, envir): cannot include others' data into repos
 
     ## Daily periodicity from 2010-07-01 05:30:00 to 2020-11-30 05:30:00 
     ## [1] 3567  118
     ## [1] 543  99
-
-``` r
-str(R)
-```
-
     ## An 'xts' object on 2010-07-18 05:30:00/2020-11-30 05:30:00 containing:
     ##   Data: num [1:543, 1:99] 0.00824 0.00759 -0.01018 0.01291 0.00535 ...
     ##  - attr(*, "dimnames")=List of 2
@@ -72,158 +31,24 @@ str(R)
     ##   xts Attributes:  
     ##  NULL
 
-``` r
-head(R, 2)
-```
+    ## Warning: package 'DEoptim' was built under R version 3.6.3
 
-    ##                          BSE200      BSEAUTO BSEBASICMAT      BSECD     BSECDGS
-    ## 2010-07-18 05:30:00 0.008239170 -0.003825049 0.002444461 0.03839841 0.010919144
-    ## 2010-07-25 05:30:00 0.007594995  0.009131884 0.030051809 0.01675882 0.003169761
-    ##                          BSECG      BSECPSE  BSEDOLLEX20    BSEENERGY
-    ## 2010-07-18 05:30:00 0.02411872 -0.015656079 0.0082353551 -0.006427263
-    ## 2010-07-25 05:30:00 0.02117535  0.009216533 0.0005506979 -0.002110699
-    ##                          BSEFIN      BSEFMCG  BSEHEALTHCA BSEINDUSTRI
-    ## 2010-07-18 05:30:00 0.028336166  0.005077060 -0.003545624  0.02223386
-    ## 2010-07-25 05:30:00 0.005831841 -0.002527536 -0.017617141  0.01315488
-    ##                            BSEIT    BSEMETAL    BSEOILGAS    BSEPOWER
-    ## 2010-07-18 05:30:00 -0.003373770 0.004878393 -0.010390482 0.008661369
-    ## 2010-07-25 05:30:00  0.002551948 0.039811106  0.001043825 0.003520056
-    ##                           BSEPSU   BSESENSEX      BSETECK  BSETELECOM
-    ## 2010-07-18 05:30:00 -0.008444176 0.006833342 -0.006679993 -0.02583848
-    ## 2010-07-25 05:30:00  0.014515151 0.009707781  0.007341158  0.03199057
-    ##                          BSEUTIL         DAX         DJCA         DJIA
-    ## 2010-07-18 05:30:00 -0.008771642 -0.00412540 -0.008279836 -0.009867083
-    ## 2010-07-25 05:30:00  0.008384869  0.02065676  0.038369418  0.031842835
-    ##                         FTSE100         HSI          NDX      SNP500
-    ## 2010-07-18 05:30:00 0.005052577 -0.00632558 -0.006251627 -0.01220825
-    ## 2010-07-25 05:30:00 0.029357979  0.02752704  0.039093174  0.03486333
-    ##                       BANKNIFTY   CNXINFRA        CNXIT   CNXMIDCAP CNXNIFTYJUN
-    ## 2010-07-18 05:30:00 0.030391929 0.01011040 -0.003657391 0.011236342 0.011732552
-    ## 2010-07-25 05:30:00 0.008002092 0.01382238  0.002346860 0.003383233 0.003655916
-    ##                       CNXREALTY     GOLDBEES         IDBI         INFY
-    ## 2010-07-18 05:30:00 0.062631644  0.007385025 -0.010595046 -0.034263502
-    ## 2010-07-25 05:30:00 0.007203017 -0.001938146 -0.003282728  0.003393538
-    ##                     NIFTYMIDCAP   S.PCNX500     SENIFTY         A50
-    ## 2010-07-18 05:30:00 0.003653168 0.006367598 0.007714285 0.014449038
-    ## 2010-07-25 05:30:00 0.011003871 0.007366924 0.010181772 0.001167267
-    ##                           AQVL30        B50  commodities         L50
-    ## 2010-07-18 05:30:00 0.0008246419 0.01668495 -0.005734708 0.001796895
-    ## 2010-07-25 05:30:00 0.0081002175 0.00566949  0.018769416 0.004994857
-    ##                           media        N10GS    N10GSclean        NE50
-    ## 2010-07-18 05:30:00  0.02211045  0.002164096  0.0006954955 0.007814224
-    ## 2010-07-25 05:30:00 -0.01525502 -0.001635340 -0.0031679272 0.009434791
-    ##                      NGrowthS15       pharma      V20N50     BPCL.BO
-    ## 2010-07-18 05:30:00  0.01153909 -0.008793705 0.008826769 -0.07395073
-    ## 2010-07-25 05:30:00 -0.00214595 -0.013418648 0.014045194 -0.04418973
-    ##                       BIOCON.BO         VNQ          GLD         SLV
-    ## 2010-07-18 05:30:00 -0.00805758 -0.01476196 -0.014381416 -0.01362883
-    ## 2010-07-25 05:30:00  0.01776709  0.05918654 -0.004983702  0.01306460
-    ##                              DBA          USO         DBB           BND
-    ## 2010-07-18 05:30:00  0.029313443 -0.005255494 -0.03646654  0.0055331847
-    ## 2010-07-25 05:30:00 -0.004760128  0.035373911  0.06387998 -0.0004894736
-    ##                               UUP         RSP         IWR         MDY
-    ## 2010-07-18 05:30:00 -0.0177506637 -0.01526001 -0.01829170 -0.01787781
-    ## 2010-07-25 05:30:00 -0.0008333945  0.04411759  0.04604512  0.04859518
-    ##                              VB         IJR       W5000         RUT         IWM
-    ## 2010-07-18 05:30:00 -0.02256974 -0.02611693 -0.01388730 -0.03071652 -0.03016106
-    ## 2010-07-25 05:30:00  0.05788439  0.05696459  0.03900164  0.06387378  0.06205905
-    ##                              SH       TSLA        FCHI    STOXX50E         N225
-    ## 2010-07-18 05:30:00  0.01080900 0.17076073 -0.01540012 -0.01336273 -0.018634101
-    ## 2010-07-25 05:30:00 -0.03610233 0.03100654  0.03008162  0.02741023  0.002399197
-    ##                              BFX        STI       JKSE         NZ50        KS11
-    ## 2010-07-18 05:30:00 -0.008154158 0.01380475 0.01635855 -0.006506435 0.008921116
-    ## 2010-07-25 05:30:00  0.025591362 0.00531092 0.01642934  0.003056485 0.011217078
-    ##                            TWII        GSPTSE          MXX        KLSE
-    ## 2010-07-18 05:30:00 0.002262291 -6.912689e-05 -0.006926752 0.009274888
-    ## 2010-07-25 05:30:00 0.012531224  1.241217e-02  0.031668532 0.006733000
-    ##                            IPSA         MERV      TA125.TA         SSMI
-    ## 2010-07-18 05:30:00 0.009677999 -0.002812395  0.0200984850 -0.004214675
-    ## 2010-07-25 05:30:00 0.024426788  0.039560566 -0.0008613025  0.002725724
-    ##                            AXJO SSE000001.S   PFIZER.NS  GRAPHITE.NS
-    ## 2010-07-18 05:30:00 0.005987180 -0.01906094  0.05311250 -0.009900176
-    ## 2010-07-25 05:30:00 0.008039522  0.05916386 -0.02721141  0.009257105
-    ##                          HEG.NS       ONGC.NS  BANKBARODA.  YESBANK.NS
-    ## 2010-07-18 05:30:00 -0.03920931 -0.0275828926  0.015442932 0.047005178
-    ## 2010-07-25 05:30:00 -0.02456158  0.0009955463 -0.003303891 0.007982693
-    ##                         IDEA.NS    SUVENadj
-    ## 2010-07-18 05:30:00 -0.02658725  0.01663932
-    ## 2010-07-25 05:30:00  0.05540385 -0.05425059
+    ## Loading required package: parallel
 
-``` r
-tail(R, 2)
-```
+    ## 
+    ## DEoptim package
+    ## Differential Evolution algorithm in R
+    ## Authors: D. Ardia, K. Mullen, B. Peterson and J. Ulrich
 
-    ##                         BSE200    BSEAUTO BSEBASICMAT      BSECD    BSECDGS
-    ## 2020-11-29 05:30:00 0.01178693 0.02443564  0.02611533 0.01316303 0.02111778
-    ## 2020-11-30 05:30:00 0.00000000 0.00000000  0.00000000 0.00000000 0.00000000
-    ##                           BSECG    BSECPSE BSEDOLLEX20  BSEENERGY     BSEFIN
-    ## 2020-11-29 05:30:00 0.001977576 0.02691363   0.0145085 0.01703918 0.01088152
-    ## 2020-11-30 05:30:00 0.000000000 0.00000000   0.0000000 0.00000000 0.00000000
-    ##                        BSEFMCG BSEHEALTHCA BSEINDUSTRI       BSEIT   BSEMETAL
-    ## 2020-11-29 05:30:00 0.01197878  0.02976199  0.01520111 0.007866626 0.05774032
-    ## 2020-11-30 05:30:00 0.00000000  0.00000000  0.00000000 0.000000000 0.00000000
-    ##                      BSEOILGAS   BSEPOWER     BSEPSU   BSESENSEX     BSETECK
-    ## 2020-11-29 05:30:00 0.02571177 0.01855182 0.02699201 0.006076675 0.001579093
-    ## 2020-11-30 05:30:00 0.00000000 0.00000000 0.00000000 0.000000000 0.000000000
-    ##                      BSETELECOM    BSEUTIL          DAX        DJCA
-    ## 2020-11-29 05:30:00 -0.02889731 0.03805014  0.014991443  0.01985916
-    ## 2020-11-30 05:30:00  0.00000000 0.00000000 -0.003343997 -0.00965757
-    ##                             DJIA      FTSE100         HSI          NDX
-    ## 2020-11-29 05:30:00  0.021864921  0.002536358  0.01661412 0.0291164864
-    ## 2020-11-30 05:30:00 -0.009126328 -0.016050977 -0.02078323 0.0008244134
-    ##                           SNP500  BANKNIFTY    CNXINFRA      CNXIT  CNXMIDCAP
-    ## 2020-11-29 05:30:00  0.022460987 0.01267923 0.005695435 0.01647551 0.03891886
-    ## 2020-11-30 05:30:00 -0.004606081 0.00000000 0.000000000 0.00000000 0.00000000
-    ##                     CNXNIFTYJUN  CNXREALTY    GOLDBEES       IDBI         INFY
-    ## 2020-11-29 05:30:00  0.01265623 0.03863895 -0.02238986 0.01854358 -0.003040827
-    ## 2020-11-30 05:30:00  0.00000000 0.00000000  0.00000000 0.00000000  0.000000000
-    ##                     NIFTYMIDCAP  S.PCNX500     SENIFTY        A50     AQVL30
-    ## 2020-11-29 05:30:00  0.04912803 0.01489717 0.008510195 0.03245673 0.01920617
-    ## 2020-11-30 05:30:00  0.00000000 0.00000000 0.000000000 0.00000000 0.00000000
-    ##                            B50 commodities        L50      media        N10GS
-    ## 2020-11-29 05:30:00 0.05851812  0.02021176 0.01238525 0.02567353 -0.001122271
-    ## 2020-11-30 05:30:00 0.00000000  0.00000000 0.00000000 0.00000000  0.000000000
-    ##                       N10GSclean       NE50  NGrowthS15     pharma    V20N50
-    ## 2020-11-29 05:30:00 -0.002281185 0.01802093 0.005570704 0.02674142 0.0131527
-    ## 2020-11-30 05:30:00  0.000000000 0.00000000 0.000000000 0.00000000 0.0000000
-    ##                         BPCL.BO  BIOCON.BO          VNQ          GLD
-    ## 2020-11-29 05:30:00 -0.02750403 0.02177966  0.003303814 -0.046007934
-    ## 2020-11-30 05:30:00  0.00000000 0.00000000 -0.010539490 -0.006697358
-    ##                             SLV          DBA          USO        DBB
-    ## 2020-11-29 05:30:00 -0.06617025  0.017391743  0.064495782 0.01405187
-    ## 2020-11-30 05:30:00  0.00000000 -0.006406172 -0.008039921 0.00406145
-    ##                               BND          UUP         RSP          IWR
-    ## 2020-11-29 05:30:00 -0.0001130993 -0.006842450  0.02833422  0.025701277
-    ## 2020-11-30 05:30:00  0.0013569822  0.002420332 -0.01076543 -0.007580388
-    ##                             MDY          VB         IJR        W5000
-    ## 2020-11-29 05:30:00  0.02723896  0.03171905  0.03755485  0.027550592
-    ## 2020-11-30 05:30:00 -0.01723404 -0.01587121 -0.02264507 -0.005737333
-    ##                             RUT         IWM           SH        TSLA
-    ## 2020-11-29 05:30:00  0.03842139  0.03797397 -0.023392932  0.17930104
-    ## 2020-11-30 05:30:00 -0.01929268 -0.01833704  0.004294156 -0.03149326
-    ##                            FCHI    STOXX50E         N225         BFX
-    ## 2020-11-29 05:30:00  0.01844101  0.01720888  0.042839491  0.03660911
-    ## 2020-11-30 05:30:00 -0.01432647 -0.01004235 -0.007954015 -0.01413414
-    ##                             STI        JKSE       NZ50        KS11        TWII
-    ## 2020-11-29 05:30:00  0.01510395  0.03728823 0.01579040  0.03082979  0.01092325
-    ## 2020-11-30 05:30:00 -0.01761690 -0.02999938 0.01012978 -0.01611960 -0.01045318
-    ##                          GSPTSE          MXX         KLSE IPSA        MERV
-    ## 2020-11-29 05:30:00  0.02193854 -0.005521899  0.008646412    0  0.07363851
-    ## 2020-11-30 05:30:00 -0.01192945  0.002506085 -0.028314673    0 -0.01554075
-    ##                        TA125.TA          SSMI         AXJO  SSE000001.S
-    ## 2020-11-29 05:30:00  0.04041510  0.0005266792  0.009421453  0.009011773
-    ## 2020-11-30 05:30:00 -0.01578683 -0.0023596599 -0.012699451 -0.004866690
-    ##                       PFIZER.NS GRAPHITE.NS      HEG.NS    ONGC.NS BANKBARODA.
-    ## 2020-11-29 05:30:00 0.008657211  0.03052876 -0.01938343 0.09130544  0.07688313
-    ## 2020-11-30 05:30:00 0.000000000  0.00000000  0.00000000 0.00000000  0.00000000
-    ##                     YESBANK.NS     IDEA.NS    SUVENadj
-    ## 2020-11-29 05:30:00  0.0102565 -0.02519025 -0.01175855
-    ## 2020-11-30 05:30:00  0.0000000  0.00000000  0.00000000
+    ## Loading required package: unikn
 
-``` r
-# Get a character vector of the fund names
-funds <- colnames(R)
-```
+    ## Warning: package 'unikn' was built under R version 3.6.3
+
+    ## Welcome to unikn (v0.3.0)!
+
+    ## unikn.guide() opens user guides.
+
+![](momentObjective_files/figure-markdown_github/GettingStarted-1.png)
 
 2 Setting the Portfolio Moments
 -------------------------------
@@ -379,7 +204,7 @@ if(matchVignette){
 ---------------------------------
 
 ``` r
-maxret <- add.objective(portfolio=init, type="return", name="mean")
+maxret <- add.objective(portfolio=init.portFL, type="return", name="mean")
 print(maxret)
 ```
 
@@ -482,7 +307,7 @@ You might recall earlier research viewpoint [Nay Ratna](https://github.com/yadev
 > If an actor pockets some rewards from a policy they enact or support without accepting any of the risks, economists consider it to be a problem of "missing incentives". In contrast, to Taleb, the problem is more fundamentally one of asymmetry: one actor gets the rewards, the other is stuck with the risks.\[1\] Taleb argues that "For social justice, focus on symmetry and risk sharing. You cannot make profits and transfer the risks to others, as bankers and large corporations do ... Forcing skin in the game corrects this asymmetry better than thousands of laws and regulations."
 
 ``` r
-qu <- add.objective(portfolio=init, type="return", name="mean")
+qu <- add.objective(portfolio=init.portFL, type="return", name="mean")
 qu <- add.objective(portfolio=qu, type="risk", name="var", risk_aversion=quRiskAversion)
 # Run the optimization.
 opt_qu <- optimize.portfolio(R=R, portfolio=qu, optimize_method="ROI", trace=TRUE)
@@ -565,13 +390,15 @@ chart.Weights(opt_qu)
 
 ![](momentObjective_files/figure-markdown_github/maxQuadUtilityROI-2.png)
 
+[A Machine Learning Integrated Portfolio Rebalance Framework with Risk-Aversion Adjustment](https://www.mdpi.com/1911-8074/13/7/155) offers some insights: &gt; Though the mean-variance model is widely used in practice, it has two main well-known limitations. The solution of the mean-variance model is consistent with the principle of utility maximization only if the asset returns are normally distributed or the utility function is quadratic, where the normality and quadraticity are not usually satisfied in the real financial world. ... The efficient solutions of the bi-objective mean-risk portfolios can typically be achieved by solvingone of the three optimization models: (1) maximizing the expected return subject to an upper-bounded budget level on the risk measure; (2) minimizing the risk measure while requiring the mean return to exceed an acceptable threshold value; (3) maximizing the risk-adjusted mean return, which takes the form of mean return less the risk measure multiplied by a risk-aversion coefficient selected by the investor. This risk-aversion coefficient represents the preference or risk attitude of the investor toward the market environment, which is a reflection of the market trend.
+
 6.5 Minimize expected tail loss with ROI
 ----------------------------------------
 
 If the exploration so far is making the investor loss averse, let's take this position now, with a coherent measure of risk `ETL` (also known as `CVaR` or `ES`) instead of `StdDev`.
 
 ``` r
-etl <- add.objective(portfolio=init, type="risk", name="ETL")
+etl <- add.objective(portfolio=init.portFL, type="risk", name="ETL")
 # Run the optimization.
 opt_etl <- optimize.portfolio(R=R, portfolio=etl, optimize_method="ROI", trace=TRUE)
 print(opt_etl)
@@ -648,7 +475,7 @@ chart.Weights(opt_etl)
 C. [Maximizing Modified Sharpe Ratio Demo 2014](https://github.com/braverock/PortfolioAnalytics/blob/master/demo/demo_max_STARR.R) Adapted
 ==========================================================================================================================================
 
-This gets you what's called as a tangency portfolio.
+This gets you what's called as a tangency portfolio. Positioning for a mean return beyond that tangency position forces the investor to also tolerate disproportionately-higher risk. This tangency position is visualized in the Efficienct Frontier charted ahead.
 
 ``` r
 #' This script demonstrates how to solve a constrained portfolio optimization 
@@ -785,18 +612,12 @@ chart.EfficientFrontier(ef2)
 ![](momentObjective_files/figure-markdown_github/maxModifiedSharpeSTARR-3.png)
 
 Appendix
---------
+========
 
 Here's the runtime environment used. It's reported here for reproducibility:
 
 ``` r
-Sys.info()[['sysname']]
-```
-
-    ## [1] "Windows"
-
-``` r
-sessionInfo()
+sessionInfo() # Sys.info()[['sysname']]
 ```
 
     ## R version 3.6.2 (2019-12-12)
@@ -811,21 +632,28 @@ sessionInfo()
     ## [5] LC_TIME=English_India.1252    
     ## 
     ## attached base packages:
-    ## [1] stats     graphics  grDevices utils     datasets  methods   base     
+    ## [1] parallel  stats     graphics  grDevices utils     datasets  methods  
+    ## [8] base     
     ## 
     ## other attached packages:
-    ## [1] ROI.plugin.quadprog_1.0-0  ROI.plugin.glpk_1.0-0     
-    ## [3] ROI_1.0-0                  MASS_7.3-51.4             
-    ## [5] PortfolioAnalytics_1.1.0   PerformanceAnalytics_2.0.4
-    ## [7] foreach_1.4.8              xts_0.12.1                
-    ## [9] zoo_1.8-7                 
+    ##  [1] unikn_0.3.0                DEoptim_2.2-5             
+    ##  [3] ROI.plugin.quadprog_1.0-0  ROI.plugin.glpk_1.0-0     
+    ##  [5] ROI_1.0-0                  MASS_7.3-51.4             
+    ##  [7] PortfolioAnalytics_1.1.0   PerformanceAnalytics_2.0.4
+    ##  [9] foreach_1.4.8              xts_0.12.1                
+    ## [11] zoo_1.8-7                 
     ## 
     ## loaded via a namespace (and not attached):
-    ##  [1] Rcpp_1.0.3          knitr_1.27          magrittr_1.5       
-    ##  [4] lattice_0.20-38     rlang_0.4.4         quadprog_1.5-8     
-    ##  [7] stringr_1.4.0       tools_3.6.2         grid_3.6.2         
-    ## [10] xfun_0.19           registry_0.5-1      htmltools_0.4.0    
-    ## [13] iterators_1.0.12    yaml_2.2.1          digest_0.6.24      
-    ## [16] numDeriv_2016.8-1.1 Rglpk_0.6-4         codetools_0.2-16   
-    ## [19] evaluate_0.14       slam_0.1-47         rmarkdown_2.1      
-    ## [22] stringi_1.4.6       compiler_3.6.2
+    ##  [1] Rcpp_1.0.3          pillar_1.4.3        compiler_3.6.2     
+    ##  [4] iterators_1.0.12    tools_3.6.2         digest_0.6.24      
+    ##  [7] tibble_2.1.3        evaluate_0.14       lifecycle_0.1.0    
+    ## [10] gtable_0.3.0        lattice_0.20-38     pkgconfig_2.0.3    
+    ## [13] rlang_0.4.4         registry_0.5-1      Rglpk_0.6-4        
+    ## [16] yaml_2.2.1          xfun_0.19           dplyr_0.8.3        
+    ## [19] stringr_1.4.0       knitr_1.27          tidyselect_0.2.5   
+    ## [22] grid_3.6.2          glue_1.3.1          R6_2.4.1           
+    ## [25] rmarkdown_2.1       purrr_0.3.3         ggplot2_3.3.2      
+    ## [28] magrittr_1.5        scales_1.1.0        codetools_0.2-16   
+    ## [31] htmltools_0.4.0     assertthat_0.2.1    colorspace_1.4-1   
+    ## [34] numDeriv_2016.8-1.1 quadprog_1.5-8      stringi_1.4.6      
+    ## [37] munsell_0.5.0       slam_0.1-47         crayon_1.3.4
