@@ -1,0 +1,368 @@
+---
+title: "500 invest for 36% CAGR"
+author: Vinit Kaushik. 
+output: github_document
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+---
+
+```{r setupv500, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(cache = TRUE) # , cache.path='cache/')
+```
+
+Now using the 500 or so investible stock assets constituting index `BSE500`, the [author](mailto:yadevinit@gmail.com) explores the possibility of generating a target return consistent with 36% CAGR.
+- Some of the data from Yahoo Finance had NAs or was missing for some durations.
+- TBD M4 failure for ESmodified. Chose Gaussian. Then chart failed.
+
+```{r moSetupv500, message=T, include=TRUE}
+date()
+# Initialize globals before source():
+cMyPath <- "F:/pf4pf/toDo/"
+cFileIndex <- "BSE500stocks2020Dec22-0735"
+cDateRange <- "2012-07/2020-12-18" # coz "2010-07/" is missing Yahoo Finance data for many.
+source(paste0(cMyPath, "../gettingStarted.R")) # (gIx["2014/2016-05","CGCL"]) not ok coz repeated data and NAs.
+setwd(paste0(cMyPath, "../"))
+```
+
+# Target Return and Rebalancing on [6.5 Minimize expected tail loss with ROI]
+This also adapts [Vignette: Portfolio Optimization with CVaR budgetsin PortfolioAnalytics 2010] for targeting (mean weekly) return equivalent to 36% CAGR while also minimizing risk as measured by (Expected Shortfall) `ES`, possibly also budgeting for (a) a component risk (as a percentage range) or (b) concentration (as equal budget). These variants of portfolio specification are iterated through ahead.
+
+## Static Optimization Now (Leading to Dynamic Rebalancing)
+```{r minETLwithROIv500, echo=TRUE}
+require(Rglpk)
+require(quadprog)
+mustRebalance <- FALSE # TRUE
+cESpValue <- 0.925 # Was: 0.925. default 0.95 or higher might result in too few exceedences/
+  # outliers esp. for smaller training/rolling windows such as 36. Warnings such as:
+  # [Initial scale 0 because more than 'h' (=36) observations are identical.Returning original
+  # data; unable to clean data due to error: Lapack routine dgesv: system is exactly singular].
+cReturnTargetCwGR <- ifelse(wantLogReturn, log(1 + CaGRtoCwGR(0.36)), CaGRtoCwGR(0.36))
+  # Consider target 36% (or 24%) CAGR.
+cHHIconcAversion <- c(0, 0.01, 0.06, 0.10, 1e6)[1] # coz can't seem to get ROI to work with (mean xor ES)+conc_aversion
+# warning("risk-budgeting/lim needs max return maybe without target.")
+  # [The conc_aversion parameter controls how much concentration is
+  # penalized. The portfolio concentration is defined as the Herfindahl Hirschman Index of the weights.]
+  # conc_aversion=1e6 with min-var objective [High conc_aversion values should result in an equal weight portfolio.]
+  # [For otpimization problems solved with theglobal numeric optimizers, the portfolio HHI value is penalized
+  # using conc_aversion value as the multiplier. For quadratic utility problems with weight concentration as an
+  # objective using the ROI solver, this is implemented as a penalty to the objective function.]
+  # [... retrive the objectives to minimize, these should either be "var" and/or "mean"
+  # we can eight miniminze variance or maximize quiadratic utility (we will be minimizing the neg. quad. utility)]
+warning("minES etc only singletons, for now. ES() crashes on clean=boudt!!"); ESargs.opts <- c(4,3)
+  # c(2,3) changed 2020Dec26. Was: c(FALSE) # c(FALSE, TRUE)
+pfESplus.ix.opts <- c(2:3) # Beware: not c(1,2) for now.
+minESv3.ix.opts <- c(1:4) # c(3,1) coz 2 prisk= seems variable "industry standard".
+cRebalSpec.ix.opts <- c(9:11, 12:13, 14) # Was: c(14). c(9:11, 12:13) # c(9, 10)
+
+for(cRebalSpec.ix in cRebalSpec.ix.opts){
+for(ESargs.ix in ESargs.opts){
+for(pfESplus.ix in pfESplus.ix.opts){
+  ES.args <- switch(ESargs.ix, # Note: ES args are passed in as a named list.
+    list(p=cESpValue, clean="boudt"), # for robustness/ stability.
+    list(p=cESpValue, clean="none"), # for conservative (investor) estimates.
+    list(p=cESpValue, clean="none", method="gaussian"), # portfolio_method="single" by default.
+      # method="gaussian" added 2020Dec26 coz "modified" fails (and "historical" deemed unsuitable for short histories)
+      # as it depends on a Kurtosis estimate that exceedingly demands RAM etc. for BSE500 stocks.
+    list(p=cESpValue, clean="none", method="gaussian", portfolio_method="component")
+  )
+  for(minESv3.ix in minESv3.ix.opts){
+    pfPreES <- switch(pfESplus.ix,
+      init.portFL,
+      add.objective(portfolio=init.portFL, type="return", name="mean", target=cReturnTargetCwGR),
+      add.objective(portfolio=init.portFL, type="return", name="mean") # without any target= spec.
+    )
+
+    etlv2 <- add.objective(portfolio=pfPreES, type="risk", name="ES", arguments=ES.args) # or name="ETL"
+    etlv2.RB <- add.objective(portfolio=etlv2, type="risk_budget", name="ES", arguments=ES.args,
+      min_prisk=0, max_prisk=0.6) # limits on component risk contribution.
+    etlv2.eqRB <- add.objective(portfolio=etlv2, type="risk_budget", name="ES", arguments=ES.args,
+      min_concentration=TRUE) # objective with equal component risk contribution.
+
+    pfESplus.preConcAversion <- minESv3 <- list(etlv2, etlv2.RB, etlv2.eqRB, pfPreES)[[minESv3.ix]]
+    if(cHHIconcAversion > 0){
+      if(minESv3.ix != 4){
+        warning(paste0("conc_aversion=", cHHIconcAversion,
+          " other than mean xor var seems unsupported by ROI. So, it is ignored."))
+        pfESplus <- pfESplus.preConcAversion
+      } else {
+        pfESplus <- add.objective(portfolio=pfESplus.preConcAversion, type="weight_concentration",
+          name="HHI", conc_aversion=cHHIconcAversion)
+      }
+    } else {
+      pfESplus <- pfESplus.preConcAversion
+    }
+
+    tmp5.filePrefix <- paste0("opt_pfESplus", "-ESarg", ESargs.ix, # Was: "-clean" till 2020Dec26.
+      "Retarg", pfESplus.ix, "ES", minESv3.ix, tStamp()); print(paste0("Starting ", tmp5.filePrefix))
+    opt_pfESplus <- optimize.portfolio(R=R, portfolio=pfESplus, optimize_method="ROI",
+      momentFUN=cRebalSpec$momentFUN[cRebalSpec.ix], # Added 2020Dec23
+      trace=TRUE)
+    saveRDS(opt_pfESplus, file=paste0(paste0(results.dir, "/"), tmp5.filePrefix, ".rds"))
+    print(opt_pfESplus)
+    charTitle <- tmp5.filePrefix
+      # paste0("ETL Optimization", "-ESarg", ESargs.ix, "-targRet", pfESplus.ix, "ES", minESv3.ix)
+    chart.Weights(opt_pfESplus, main=charTitle)
+    if(FALSE){
+      warning("Following plot() crashes the R session for 380+ assets!  Manually run iff needed.")
+      plot(opt_pfESplus, risk.col="ES", return.col="mean", main=charTitle) # , chart.assets=TRUE)
+    } # else continue.
+
+    if(mustRebalance){
+      btopt_pfESplus <- optimize.portfolio.rebalancing(R=R, portfolio=pfESplus,
+        optimize_method="ROI", trace=TRUE,
+        momentFUN=cRebalSpec$momentFUN[cRebalSpec.ix], # Added 2020Dec23
+        rebalance_on=cRebalSpec$rebalance_on[cRebalSpec.ix], # Was: "quarters",
+        training_period=cRebalSpec$training_period[cRebalSpec.ix], # Was: 36
+        rolling_window=cRebalSpec$rolling_window[cRebalSpec.ix])
+      saveRDS(btopt_pfESplus, file=paste0(paste0(results.dir, "/"),
+        paste0("bt-rebal", cRebalSpec.ix, tmp5.filePrefix), tStamp(), ".rds"))
+      print(btopt_pfESplus)
+      if(FALSE){ # to avoid possible crashing due to large set of assets.
+        btpfRets <- summary(btopt_pfESplus)$portfolio_returns
+        rebalWts <- mychart.Weights(btopt_pfESplus, main=paste0("Weights", charTitle)); print(tail(round(rebalWts, 3), 6))
+        # chart.Weights(btopt_pfESplus, main=paste0("Weights", charTitle),
+        #   cex.legend=0.8/2) # , col=my_colors) # ylim=c(1.2),
+        # # col=my_colors # bluemono)
+        charts.PerformanceSummary(btpfRets, main=paste0("performance ", charTitle))
+        # , col=my_colors)
+      } # else continue
+    } # else continue
+  }
+}
+}
+}
+```
+
+The reader can see that the last three portfolio specifications show similar (static) Reward-Risk trade-off charts and portfolio weights, as tabulated ahead in descending order of (statically-optimized) weights:
+
+| BIOCON.BO | TSLA | MERV | BPCL.BO | NZ50 | SUVENadj | GOLDBEES |
+|----------:|-----:|-----:|--------:|-----:|---------:|---------:|
+| 0.3297    |0.2900|0.1204| 0.1063  |0.1020| 0.0379   | 0.0126   |
+
+The first three portfolio specifications show optimal portfolios (marked by a blue dot on the Reward-Risk chart) located similar to asset `N10GS` (India's `NIFTY 10-year benchmark G-Sec Index`) though weights of only `40.6%` are allocated to `N10GS` and the rest are allocated to `UUP` and other assets.
+
+
+## Rebalancing Optimization Performance with Rolling Windows
+Looking at the Rebalancing performance ahead of the last three portfolio specifications, the reader can see Annualized Portfolio Rebalancing Return being reported as `0.2212168`; this is `log return`, which is equal to `exp(0.2212168)-1 =0.2475939 =24.8%` CAGR. That is during `34` (quarterly) Rebalancing dates till 2020-Nov. Rebalancing code `9` referred to makes the optimizer use "rolling windows" of `52*2` weeks (2 years) to train on when it rebalances, and that Rebalancing is repeated each quarter. The reader might also note that quarterly Rebalancing can change weights, resulting in transaction costs and taxation for short-term capital gains. These have not been penalized in the portfolio Objectives, and so, the reader has to consider that separately.
+
+```{r comboRebalv500}
+warning("Ensure correct files list in flist via DOS cmd: > dir /b /o-d bt* > flist.txt")
+flist <- read.csv(file=paste0(results.dir, "/flist2021Jan011229.txt"), stringsAsFactors=FALSE, header=FALSE)
+# flist <- read.csv(file=paste0(results.dir, "/flist2020Dec311957.txt"), stringsAsFactors=FALSE, header=FALSE)
+# flist <- read.csv(file=paste0(results.dir, "/flist2020Dec292200.txt"), stringsAsFactors=FALSE, header=FALSE)
+flist <- c(flist[,1])
+
+flist.invest500CAGR36.20201228 <- paste0(c(
+  "bt-rebal11opt_pfESplus-ESarg3Retarg2ES3-202012282103-202012282103",
+  "bt-rebal11opt_pfESplus-ESarg3Retarg2ES2-202012282103-202012282103",
+  "bt-rebal11opt_pfESplus-ESarg3Retarg2ES1-202012282102-202012282103",
+
+  "bt-rebal10opt_pfESplus-ESarg3Retarg2ES3-202012281932-202012281933",
+  "bt-rebal10opt_pfESplus-ESarg3Retarg2ES2-202012281931-202012281932",
+  "bt-rebal10opt_pfESplus-ESarg3Retarg2ES1-202012281929-202012281930",
+   "bt-rebal9opt_pfESplus-ESarg3Retarg2ES3-202012281928-202012281929",
+   "bt-rebal9opt_pfESplus-ESarg3Retarg2ES2-202012281927-202012281928",
+   "bt-rebal9opt_pfESplus-ESarg3Retarg2ES1-202012281926-202012281927"
+  ), ".rds"
+)
+flist.invest500CAGR36.20201227 <- paste0(c(
+  "bt-rebal9opt_pfESplus-ESarg3-targRet2ES3-202012270813-202012270814",
+  "bt-rebal9opt_pfESplus-ESarg3-targRet2ES2-202012270812-202012270813",
+  "bt-rebal9opt_pfESplus-ESarg3-targRet2ES1-202012270811-202012270812"
+  ), ".rds"
+)
+flist.momentObjectives <- c(
+  "bt-rebal9opt_pfESplus-cleanT-targRet2ES3-202012191820-202012191847.rds",
+  "bt-rebal9opt_pfESplus-cleanT-targRet2ES2-202012191749-202012191816.rds",
+  "bt-rebal9opt_pfESplus-cleanT-targRet2ES1-202012191727-202012191745.rds",
+  "bt-rebal9opt_pfESplus-cleanF-targRet2ES3-202012191724-202012191724.rds",
+  "bt-rebal9opt_pfESplus-cleanF-targRet2ES2-202012191723-202012191723.rds",
+  "bt-rebal9opt_pfESplus-cleanF-targRet2ES1-202012191722-202012191723.rds"
+)
+
+flist <- rev(flist) # reverse into the order of execution of rebalancing optimization.
+btouts <- list()
+btouts.rets <- list()
+rebalWts <- list()
+for(ix in 1:length(flist)){ # Was: 6:1
+  btouts[[ix]] <- readRDS(file=paste0(results.dir, "/", flist[ix]))
+  btout <- btouts[[ix]]
+  # stop("copied into earlier chunk")
+  btouts.rets[[ix]] <- summary(btout)$portfolio_returns # takes few mins for BSE500.
+  names(btouts.rets)[[ix]] <- paste0("bt", ix)
+  # duh5 <- summary(btout)$portfolio_returns; colnames(duh5) <- paste0("bt", ix)
+  # print(btout)
+  rebalWts[[ix]] <- mychart.Weights(btout, main=paste0("Weights for ", names(btouts.rets)[[ix]])) # charTitle)
+    print(tail(round(rebalWts[[ix]], 3), 6))
+  # chart.Weights(btout, main=paste0("Weights for ", names(btouts.rets)[[ix]]), # charTitle),
+  #   cex.legend=0.8/2, colorset=my_colors) # ylim=c(1.2),
+  #   # col=my_colors # bluemono)
+}
+  btouts.rets.mx <- do.call(cbind, btouts.rets)
+  colnames(btouts.rets.mx) <- names(btouts.rets) # Was: paste("bt", 1:length(btouts.rets.mx), sep="")
+  mycharts.PerformanceSummary(btouts.rets.mx, main=paste0("Rebalancing performance"))
+```
+
+## Peek at a Latest Rebalancing: Weights and More
+```{r peekRebalWtsv500}
+  btExplain.df <- data.frame(bt=1:length(colnames(btouts.rets.mx)), fname=flist,
+    periodMeanReturn=colMeans(btouts.rets.mx, na.rm=TRUE),
+    periodMeanReturn.half=colMeans(btouts.rets.mx[1:round(nrow(btouts.rets.mx)/2),], na.rm=TRUE),
+    stringsAsFactors=FALSE); str(btExplain.df)
+  btExplain.df <- cbind(parseBtFnames(flist), btExplain.df, stringsAsFactors=FALSE)
+  # tmp3 <- btExplain.df[order(btExplain.df$periodMeanReturn),]; tail(tmp3)
+  boxplot(periodMeanReturn ~ rebal+ESarg+Retarg+ES, data=btExplain.df, las=2, cex.axis=0.5)
+  boxplot(periodMeanReturn.half ~ rebal+ESarg+Retarg+ES, data=btExplain.df, las=2, cex.axis=0.5)
+  # 2021Jan01:
+  # To avoid <1-year taxation, investor might prefer rebal[11,12,14] to rebalance on "years",
+  # instead of "quarters".
+  # rebal13 >> rebal[11?,14?,  9,10,12]. rebal10 too rebalances on quarters, but did not perform
+  #   as well. Considering first half periods, after rebal13, rebal11 (followed by rebal14) seems
+  #   better than the others for ES[1,2,3] and worse overall (rebal14 seems worst) for ES4 with
+  #   Retarg2.
+  #   So, 36-period Training (and Rolling) Window dominates (52-period or longer) Windows,
+  #   apparently.
+  # ES4 >> ES[1-3]. So, a (pass-through or) nil ES Objective allows Return Objective (variants)
+  #   to maximize freely.
+  #   In ES4 scenarios when varying other optimization drivers, backtest performance is better
+  #   when Retarg3, i.e.,
+  #   "unbridled" Return maximization, as opposed to mean-targeted Retarg2.  In non-ES4
+  #   scenarios, Retarg3 and Retarg2 seem to perform similarly.
+  # ESarg does not seem to matter.
+
+  Reqwt.rebalQtr <- Return.portfolio(R, rebalance_on="quarters") # rowSums(R) / 
+  btouts.rets.IR <- InformationRatio(Ra=btouts.rets.mx, Rb=Reqwt.rebalQtr, scale=52)
+    # coz 52 weeks in a year.
+    # [William Sharpe now recommends InformationRatio preferentially to the original Sharpe
+    # Ratio], says a vignette.
+  # IRhigh.ix <- which(btouts.rets.IR > 0)
+  # (btouts.rets.IR[IRhigh.ix]) # tail(sort(btouts.rets.IR))
+  # IRhigh.ix.names <- dimnames(btouts.rets.IR)[[2]][IRhigh.ix] # c("bt1","bt2",...)
+  btExplain.df <- cbind(btExplain.df, IR=btouts.rets.IR[1,], stringsAsFactors=FALSE); str(btExplain.df)
+
+  cRebalSpec.df <- as.data.frame(cRebalSpec, stringsAsFactors=FALSE)
+  cRebalSpec.df <- cbind(ix=1:nrow(cRebalSpec.df), cRebalSpec.df, stringsAsFactors=FALSE)
+  tmp2 <- do.call(rbind, lapply(as.integer(btExplain.df$rebal),
+    FUN=function(ix) cRebalSpec.df[ix == cRebalSpec.df$ix,]))
+    # , stringsAsFactors=FALSE) # [1:nrow(btExplain.df)]
+  btExplain.df <- cbind(btExplain.df, tmp2, stringsAsFactors=FALSE); str(btExplain.df)
+  plot(periodMeanReturn ~ IR, data=btExplain.df); plot(periodMeanReturn.half ~ IR,
+    data=btExplain.df)
+    # Beware: there are overlapped points, since we did not jitter them.
+    # So, IR cannot be rejected as a reasonable indicator of mean Return. And it is already well
+    # accepted as an indicator of fund-management goodness.
+
+  IR.interest.cutoffChosen <- c(0.5, 1)[2]
+  bt.interestSet.names <-
+    rownames(btExplain.df[btExplain.df$IR >= IR.interest.cutoffChosen & TRUE,])
+  bt.interestSet.names
+  mycharts.PerformanceSummary(btouts.rets.mx[, bt.interestSet.names],
+    main=paste0("Rebalancing performance (InformationRatio >=", IR.interest.cutoffChosen, ")"))
+  # "bt77"
+
+  bt.interestSet <- c(77)
+    # c(24,16,8,20)
+    # bt.interestSet.not <- setdiff(colnames(btouts.rets.mx), paste0("bt", bt.interestSet))
+  # mycharts.PerformanceSummary(btouts.rets.mx[,bt.interestSet.not],
+  #   main=paste0("Rebalancing performance"))
+  # mycharts.PerformanceSummary(btouts.rets.mx[,paste0("bt", c(4,12,20))],
+  #   main=paste0("Rebalancing performance"))
+
+ix <- bt.interestSet[1] # Was 7. Corresponding to bt<ix>. Presently, ix=1,2,3 are similar.
+btout <- btouts[[ix]]
+# names(btout)
+# length(btout$opt_rebalancing)
+# btout$opt_rebalancing[[1]] # first Rebalancing weights.
+# btout$opt_rebalancing[[1]]$data_summary
+btout.rebal.last <- btout$opt_rebalancing[[length(btout$opt_rebalancing)]] # weights from latest Rebalancing
+# btout.rebal.last
+tail(sort(btout.rebal.last$weights), 20)
+# btout$opt_rebalancing[[length(btout$opt_rebalancing)]]$data_summary
+# Brief optimization result and return/risk measures:
+btout.summary <- summary(btout)
+# btout.summary
+head(extractObjectiveMeasures(btout)); tail(extractObjectiveMeasures(btout))
+# par(ask=TRUE); plot.new()
+if(FALSE){ # iff ES.contribution columns via specifying prisk= specified eg bt5
+  chart.RiskBudget(btout, match.col="ES", risk.type="percentage", col=my_color) # "CVaR"
+} # else continue
+
+print(btout)
+rebalWts <- mychart.Weights(btout, main=paste0("Weights bt", ix)); print(tail(round(rebalWts, 3), 6))
+# chart.Weights(btout, main=paste0("Weights bt", ix),
+#   cex.legend=0.8/2, col=my_colors) # ylim=c(1.2),
+#   # col=my_colors # bluemono)
+mycharts.PerformanceSummary(btout.summary$portfolio_returns, main=paste0("Performance bt", ix))
+```
+
+For this portfolio specification, weights from the (latest at the time of writing) Rebalancing of 2020-Nov show up as tabulated here:
+
+GOLDBEES | PFIZER.NS | N10GS | TSLA | UUP  |
+--------:|----------:|------:|-----:|-----:|
+0.4456   | 0.3260    | 0.0838|0.0820|0.0626|
+
+
+# Appendix: Runtime Environment
+Here's the runtime environment used. It's reported here for reproducibility:
+```{r Closingv500}
+sessionInfo() # Sys.info()[['sysname']]
+```
+
+```{r btExplain, eval=FALSE, include=FALSE}
+    # So, we could just choose a btpf based on IR. Instead, let us attempt to explain drivers of IR, and then choose;
+    # That would help develop our intuition surrounding this space.
+  m1 <- lm(IR ~ 0+ training_period+rebalance_on+momentFUN+ES+Retarg+ESarg, data=btExplain.df)
+  summary(m1); anova(m1)
+  m1ie1 <- lm(IR ~ 0+ training_period*rebalance_on*momentFUN +ES+Retarg+ESarg, data=btExplain.df)
+  summary(m1ie1); anova(m1ie1)
+  m1ie2 <- lm(IR ~ 0+ training_period*rebalance_on +momentFUN +ES+Retarg+ESarg, data=btExplain.df)
+  summary(m1ie2); anova(m1ie2)
+  # following fails coz unnested maybe: anova.lm(list(m1, m1ie1, m1ie2))
+
+  require(nlme)
+  btExplain.df.fac <- btExplain.df
+  btExplain.df.fac$rebalance_on <- as.factor(btExplain.df.fac$rebalance_on)
+  btExplain.df.fac$training_period <- as.factor(btExplain.df.fac$training_period)
+  btExplain.df.fac$momentFUN <- as.factor(btExplain.df.fac$momentFUN)
+  btExplain.df.fac$ES <- as.factor(btExplain.df.fac$ES)
+  btExplain.df.fac$Retarg <- as.factor(btExplain.df.fac$Retarg)
+  btExplain.df.fac$ESarg <- as.factor(btExplain.df.fac$ESarg)
+  m2 <- lmList(IR ~ 0+ training_period+momentFUN+ES+Retarg+ESarg | rebalance_on, data=btExplain.df.fac)
+    # [> Warning message:
+    # 1 error caught in `contrasts<-`(`*tmp*`, value = contr.funs[1 + isOF[nn]]): contrasts can be applied only to
+    # factors with 2 or more levels 
+    # ]
+  summary(m2)
+  anova(m2)
+
+> m1 <- lm(IR ~ 0+training_period+rebalance_on+momentFUN+ES+Retarg+ESarg, data=btExplain.df)
+> summary(m1)
+
+Call:
+lm(formula = IR ~ 0 + training_period + rebalance_on + momentFUN + 
+    ES + Retarg + ESarg, data = btExplain.df)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.35419 -0.22640 -0.06656  0.19343  0.65274 
+
+Coefficients:
+                                 Estimate Std. Error t value Pr(>|t|)    
+training_period                -7.250e-03  9.787e-04  -7.407 7.80e-11 ***
+rebalance_onquarters            9.756e-01  1.043e-01   9.355 8.41e-15 ***
+rebalance_onyears               4.350e-01  9.661e-02   4.502 2.07e-05 ***
+momentFUNset.portfolio.moments -2.551e-01  8.979e-02  -2.841   0.0056 ** 
+ES2                            -2.530e-16  7.862e-02   0.000   1.0000    
+ES3                            -3.469e-16  7.862e-02   0.000   1.0000    
+ES4                             1.253e-01  7.862e-02   1.594   0.1145    
+Retarg3                         4.354e-02  5.560e-02   0.783   0.4357    
+ESarg4                          1.027e-16  5.560e-02   0.000   1.0000    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.2724 on 87 degrees of freedom
+Multiple R-squared:  0.6704,    Adjusted R-squared:  0.6363 
+F-statistic: 19.66 on 9 and 87 DF,  p-value: < 2.2e-16
+
+>
+```
