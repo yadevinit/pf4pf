@@ -1,7 +1,8 @@
 # pf4pf
 ## Portfolios for Pension Funds
 Here are links to sub-Projects emerging within, listed with the most-recent ones first:
-- [500 invest for 36% CAGR](./invest500CAGR36.md). This is being worked on presently, e.g., to reduce its size for GitHub to show it.
+- [Weights to AUM to Invest](./weightsAUMinvest.md).
+- [500 invest for 36% CAGR](./invest500CAGR36.md). This is yet to be reduced in size for GitHub to show it. Meanwhile, you could download (and view) its PDF [form](./preview-63070e03e9f-500invest36CAGR-2021Jan01-2358.pdf) of about 4.5MB; the code-session outputs and charts are ok to depend on, but beware that its text is yet to be updated to match.
 - [Rebalancing Objectives](./rebalanceObjectives.md).
 - [Exploring Objectives with R-Optimization Infrastructure (ROI)](./momentObjective.md).
 - [Risk-free Nay Ratna](./riskfreeNayRatna.md).
