@@ -1,0 +1,245 @@
+---
+title: "Weights to AUM to Invest"
+output: github_document
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+---
+
+```{r setupv500copy, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(cache = TRUE) # , cache.path='cache/')
+```
+
+Here, the [author](mailto:yadevinit@gmail.com) illustrates a particular `bt77` Portfolio-optimization rebalancing selected from an earlier research viewpoint [500 Invest for 36% CAGR]: to move it from its latest-rebalancing weights to the (Assets Under Management) AUM monies required to invest using it where fractional shares are unsupported. This demonstrates feasibility of really investing with it, of course, without any advice or suitability recommendation to do so for anyone referring to this.
+
+Looks like INR 4 lakhs (Rs 400,000) suffices to invest on the latest Portfolio rebalancing. And we saw in the previous viewpoint that this `bt77` is one of those whose performance exceeded the return target of 36% CAGR. We also saw there that its Information Ratio exceeded 1 during the period of study when using as benchmark an Equal-Weighted Portfolio rebalancing quarterly across the over 380 stocks being used (an asset universe taken from the `BSE500` market-capitalization-based index).
+
+Considering that `bt77` has been developed using FOSS (Free Open Source Software) and is published reproducibly, the author asserts that it can serve as a benchmark index.
+
+    - Individual or other investors could use it to negotiate extraordinary performance and incentive structures with their providers of wealth-management services and products; they could also build on it in collaborative or Do-It-Yourself mode.
+    - For greater societal impact, [PFRDA] could similarly nudge Pension Fund Managers for the committed Minimum Assured Return. The author is not a qualified Actuarial professional, but browsing through related published content on `www`, there seems to be an underlying belief that the Equity asset category presently permitted within National Pension System is limited to the "market return" provided by `NIFTY50` market-capitalization-based index. Continuing that way, the fund has to continue tolerating Drawdowns ("downsides") of 30% to 50% while the upside is less than 20% CAGR long term. Almost certainly then, growth would continue to be ordinary while tolerating high Drawdown (or Expected Tail Loss) risk. Instead, what [PFRDA] and India's Ministry of Finance could consider (if not already done so) is extraordinary growth (at possibly-lesser risk as exemplified via `bt77` investible benchmark). Creating that alternative future is consistent with a Suitable and sustainable pensions. India's Minister of Finance has invited inputs from all for the upcoming Budget, a once-in-a-100-years kind of Budget. May this proposal from the author find its way forward to transform the wealth ecosystem. Through Clawbacks or other loss-sharing provisions, incentive structures can be harmonized:
+    
+    + in quantum and timing with real positive growth in wealth (e.g., as measured by Net Present Value adjusted by Time Value of Money and Risk Premium).
+    + and creating an exemplar fund-management enterprise as a Yunus-style Social Business could (a) deny the incentive of perpetual dividend to owners of Pension-Fund Manager institutions and (b) devote that enterprise's profits and actions solely and maximally for its societal purpose of serving adequate pensions forever. That enterprise could "own" and maintain `bt77` as part of causing Peer production (and aggregation) of wealth-management-related cultural and information artefacts in the Commons. Commons-based Peer production of such artefacts sustainably beats both the markets and companies (or organizations that are hierachically managed for scale), as evidenced by Nobel Laureates in Economics who have studied this space.
+
+
+```{r moSetupv500copy, message=FALSE, include=FALSE, echo=FALSE}
+date()
+# Initialize globals before source():
+cMyPath <- "F:/pf4pf/toDo/"
+cFileIndex <- "BSE500stocks2020Dec22-0735"
+cDateRange <- "2012-07/2020-12-18" # coz "2010-07/" is missing Yahoo Finance data for many.
+source(paste0(cMyPath, "../gettingStarted.R")) # (gIx["2014/2016-05","CGCL"]) not ok coz repeated data and NAs.
+setwd(paste0(cMyPath, "../"))
+```
+
+```{r comboRebalv500p1}
+cESpValue <- 0.925
+warning("Ensure correct files list in flist via DOS cmd: > dir /b /o-d bt* > flist.txt")
+cBtOptFilenames <- "/flist2021Jan011229.txt" # Was: "/flist2020Dec311957.txt" "/flist2020Dec292200.txt" flist.* ahead.
+cOptFilenames <- "/flistopt202101011205.txt"
+
+flist <- read.csv(file=paste0(results.dir, cBtOptFilenames), stringsAsFactors=FALSE, header=FALSE)
+flist <- c(flist[,1])
+flistopt <- read.csv(file=paste0(results.dir, cOptFilenames), stringsAsFactors=FALSE, header=FALSE)
+flistopt <- c(flistopt[,1])
+
+flist <- rev(flist) # reverse into the order of execution of rebalancing optimization.
+flistopt <- rev(flistopt)
+```
+
+## Portfolio Rebalancing Performance and Weights
+```{r weightsAUMinvest1}
+### Last revised: 2021Jan05 by Yadevinit@gmail.com.
+print("Presumed parts of gettingStarted.R have a Portfolio optimization rebalancing (eg bt77) before entering this code.")
+stopifnot(exists("flist") & exists("gIx") & exists("getLastNonNA0") & exists("flistopt"))
+  # Assert globals exist in environment.
+getAUMvec <- function(pfShareCount.adj, stkPrice.vec, multipleShareCount=1){
+  # Now re-run earlier code (copy-paste for visibility):
+  print("This would require the stock-wise wealth or AUM invested to be:")
+  AUM.vec <- stkPrice.vec * (pfShareCount.adj * multipleShareCount); print(AUM.vec)
+  AUM <- sum(AUM.vec); print(paste("So, total AUM=", round(AUM, 0)))
+
+  # print("Starting with that AUM, you can cross-verify now to estimate share counts which you would have to round off:")
+  # TBD seems incorrect: print(pfShareCount.adj * AUM) # Or print(pfShareCount * AUM) / min(pfShareCount))
+
+  print("Let's pray this works, and you don't face liquidity issues.")
+  print("Beware that market prices at Buy could still differ from the prices this estimation has been worked out with:")
+  print(stkPrice.vec)
+  return(AUM.vec)
+}
+mychartRiskBudgets <- function(fname){
+  tmp.btout <- readRDS(file=paste0(results.dir, "/", fname))
+  chart.Weights(tmp.btout)
+  chart.RiskBudget(tmp.btout, match.col="ES", # "CVaR". risk.type="percentage",
+    col=my_color)
+  return()
+}
+
+
+print(date())
+ix <- c(69,70,71,  77)[4]
+print(ix); print(flist[ix]) # Ensure these refer to bt77 or other Portfolio-optimization process of interest.
+# > flist[c(69,70,71,  77)]
+# [1] "bt-rebal13opt_pfESplus-ESarg4Retarg3ES1-202012311949-202012311950.rds"
+#     "bt-rebal13opt_pfESplus-ESarg4Retarg3ES2-202012311950-202012311951.rds"
+# [3] "bt-rebal13opt_pfESplus-ESarg4Retarg3ES3-202012311951-202012311951.rds"
+#     "bt-rebal13opt_pfESplus-ESarg3Retarg3ES1-202012311954-202012311955.rds"
+btout <- readRDS(file=paste0(results.dir, "/", flist[ix]))
+# btout$opt_rebalancing[[1]] # first Rebalancing weights.
+btout.rebal.last <- btout$opt_rebalancing[[length(btout$opt_rebalancing)]] # weights from latest Rebalancing
+pfLastWts <- btout.rebal.last$weights # has latest applicable pf weights, many of which might be 0.
+# pfLastWts.gt0 <- pfLastWts[pfLastWts > 0] # Beware: might get confused with sorted equivalent!
+pfLastWts.sortGt0 <- sort(pfLastWts[pfLastWts > 0], decreasing=TRUE); print(pfLastWts.sortGt0)
+```
+
+```{r comboRebalv500p2}
+  btouts.rets <- list(); rebalWts <- list()
+  btouts.rets[[ix]] <- summary(btout)$portfolio_returns # takes few mins for BSE500.
+  names(btouts.rets)[[ix]] <- paste0("bt", ix)
+  # duh5 <- summary(btout)$portfolio_returns; colnames(duh5) <- paste0("bt", ix)
+  # print(btout)
+  # btouts.rets.mx <- do.call(cbind, btouts.rets)
+  # colnames(btouts.rets.mx) <- names(btouts.rets)
+  mycharts.PerformanceSummary(btouts.rets[[ix]], # btouts.rets.mx,
+    main=paste0("Rebalancing performance"))
+  rebalWts[[ix]] <- mychart.Weights(btout, main=paste0("Weights for ", names(btouts.rets)[[ix]]))
+```
+
+
+## Translating Portfolio Weights to Share Counts
+```{r comboRebalv500p3}
+stkPrice.vec <- getLastNonNA0(which(index(btout.rebal.last$data_summary$last) == index(gIx)),
+    # Was: nrow(gIx) but that might not be exactly at rebalancing time.
+  gIx[, names(pfLastWts.sortGt0)], cLookBackRows=(7-1))
+  # Was: index(btout.rebal.last$data_summary$last)
+  # Was: <- colMeans(tail(gIx[, names(pfLastWts.sortGt0)], 6), na.rm=TRUE); stkPrice.vec # NAs might exist coz from 1991.
+# If Rs (or $) 1 total wealth or AUM were to be invested, then @ corresponding share prices stkPrice.vec,
+# count of corresponding shares in pf would be:
+pfShareCount <- pfLastWts.sortGt0 / stkPrice.vec # These are estimates as of 2020Dec18 Close prices on BSE.
+
+# If instead of 1 total wealth or AUM, 10^k is to be invested, share counts would be approx:
+#   AUM <- 10^4; pfShareCount * AUM
+# Since fractional shares are not supported, you might be forced to drop counts < 0.5 and round up counts >= 0.5.
+# Correspondingly, you would have to tolerate or incur a tracking error vs. the backtested portfolio performance.
+stkPrice.vec.2020Dec18Close <- stkPrice.vec; print(stkPrice.vec.2020Dec18Close) # coz 2020Dec18 Close prices rebalancing.
+# If one wants the pf as designed, the least share count has to be >= 1. So, the adjusted share counts become:
+pfShareCount.adj <- pfShareCount / min(pfShareCount); print(pfShareCount.adj)
+AUM2020Dec18.vec <- getAUMvec(pfShareCount.adj, stkPrice.vec=stkPrice.vec.2020Dec18Close,
+  multipleShareCount=1)
+print("If you seek share counts as per last-rebalancing weights, you can use a multiple of the following:")
+print(pfShareCount.adj)
+print("Browse further for any deeper understanding you might wish.")
+```
+
+
+## Another Market-Executed Example Investment
+```{r weightsAUMinvest2}
+### Added following code 2021Jan03 0750am:
+# Thanks to RamakrishnanM for alerting me: some of these stock prices have moved up 50%-100%. While that's good
+# news if you had rebalanced your portfolio on 2020Dec18 itself (near that EOD Close price), if you are
+# rebalancing with EOD Close prices of 2021Jan01:
+print(date())
+stkPrice.vec.2021Jan01Close <- c(
+  # For example, using BSE prices eg via https://in.finance.yahoo.com/quote/RESPONIND.BO?p=RESPONIND.BO&.tsrc=fin-srch
+  # Beware: ICICIDirect uses ALEPHA for APLLTD (ALEMBIC PHARMA) and LAKMAC for LAXMIMAC (LAXMI MACHINERY).
+   187.20, 1498.70,  359.20, 1041.40, 174.80,
+  1190.05, 1287.80, 4067.25,  133.10, 4686.00,
+  2407.75,  241.70,   11.20, 1868.60,   62.05,
+  1100.00
+)
+names(stkPrice.vec.2021Jan01Close) <- names(stkPrice.vec.2020Dec18Close); print(stkPrice.vec.2021Jan01Close)
+print("Price growth after last rebalancing and now given prices (= the stock-component-wise AUM growth or return):")
+print(stkPrice.vec.2021Jan01Close / stkPrice.vec.2020Dec18Close - 1)
+# Assertion: pfShareCount.adj got using the optimally-rebalanced portfolio weights is the count of shares that has to be
+# had/bought at today's prices, rather than at the recorded rebalancing time.
+# stkPrice.vec <- stkPrice.vec.2021Jan01Close; print(stkPrice.vec)
+AUM2021Jan01.vec <- getAUMvec(pfShareCount.adj, stkPrice.vec=stkPrice.vec.2021Jan01Close, multipleShareCount=1)
+# print(AUM2020Dec18.vec); print(AUM2021Jan01.vec)
+# > sum(AUM2021Jan01.vec) / sum(AUM2020Dec18.vec) - 1
+# [1] 0.02491889 # about +2.5% growth.
+
+# Another market-executed example with a multiple:
+multiple.Yadevinit <- 8
+AUM2021Jan01.Yadevinit.vec <- getAUMvec(pfShareCount.adj, stkPrice.vec=stkPrice.vec.2021Jan01Close,
+  multipleShareCount=multiple.Yadevinit); print(pfShareCount.adj * multiple.Yadevinit) # Done around 2021Jan04.
+pfShareCount.Yadevinit2021Jan05 <- c(2573, 292, 920, 278, 1936,
+  254, 191, 64, 1093, 23,
+  26, 241, 2971, 10, 146,
+  8)
+print("So, pending shares to be bought to track 2020Dec bt77 portfolio rebalancing:")
+print((pfShareCount.adj * multiple.Yadevinit) - pfShareCount.Yadevinit2021Jan05)
+#                     RESPONIND PERSISTENT  GRANULES    APLLTD MAHINDCIE     IFBIND   ESCORTS  BLUEDART REDINGTON
+# 2020-12-18 05:30:00 -91.31532  -10.12243 -8.800359 -10.93182 -111.5476 -0.7758692 -6.465053 -2.517108 -35.86217
+#                     LAXMIMACH APOLLOHOSP ZENSARTECH      IDEA TATAELXSI HINDCOPPER TATACOMM
+# 2020-12-18 05:30:00 -1.164339  -1.038223  -4.957708 -67.66583 -0.544077  -17.56959        0
+print("To get this market-executed portfolio back on track with the share counts expected, you can sell excess shares.")
+print("Or instead, buy another minimal-portfolio shares adjusting for the excess shares already held as follows:")
+print((pfShareCount.adj * multiple.Yadevinit) - pfShareCount.Yadevinit2021Jan05 + pfShareCount.adj)
+#                     RESPONIND PERSISTENT GRANULES   APLLTD MAHINDCIE   IFBIND  ESCORTS BLUEDART REDINGTON LAXMIMACH
+# 2020-12-18 05:30:00  218.8953   25.11226 105.0996 22.45171   116.509 30.87715 16.60181 5.168254  96.28006  1.565118
+#                     APOLLOHOSP ZENSARTECH     IDEA TATAELXSI HINDCOPPER TATACOMM
+# 2020-12-18 05:30:00   2.081999   24.54758 295.2509 0.6379134  -1.515788        1
+# > date()
+# [1] "Tue Jan 05 22:37:07 2021"
+# This addition too was executed by Yadevinit 2021Jan06.
+```
+
+
+## (Contribution to) Expected Tail Loss of Portfolio
+```{r riskBudgets}
+flistopt[c(69,70,71,  77)]
+# mychartRiskBudgets(flistopt[c(69,70,71,  77)][1]) # does not yet work!!
+
+RtrgWin <- R[(nrow(R)-36+1) : nrow(R),]
+tmp.ES <- ES(RtrgWin,
+  p=cESpValue, clean="none", method="gaussian", portfolio_method="component",
+  weights=pfLastWts,
+  sigma=lw.sigma(RtrgWin)$sigma # via momentFUN=
+); str(tmp.ES) # ES : num -0.00248 !!
+tmp.ES.contribNot0 <- (tmp.ES$contribution[tmp.ES$contribution != 0])[names(pfLastWts.sortGt0)]; str(tmp.ES.contribNot0)
+tmp.ES.pct_contribNot0 <- (tmp.ES$pct_contrib_ES[tmp.ES$pct_contrib_ES != 0])[names(pfLastWts.sortGt0)]
+str(tmp.ES.pct_contribNot0)
+plot(tmp.ES.contribNot0); text(tmp.ES.contribNot0, names(tmp.ES.contribNot0), cex=0.8/1.0, col="blue")
+plot(tmp.ES.pct_contribNot0); text(tmp.ES.pct_contribNot0, names(tmp.ES.contribNot0), cex=0.8/1.0, col="blue")
+```
+
+
+## Normality of Returns and Other Investigations
+```{r normalityReturns}
+# ref https://cran.csiro.au/web/packages/PerformanceAnalytics/vignettes/PA-charts.pdf:
+assetRet <- RtrgWin[, names(pfLastWts.sortGt0)] # R[, "GRANULES"] # R
+layout(rbind(c(1,2),c(3,4)))
+chart.Histogram(assetRet, main = "Plain", methods = NULL)
+title(paste(head(colnames(assetRet)), collapse=","), cex.main=0.8)
+chart.Histogram(assetRet, main = "Density", breaks=40, methods = c("add.density", "add.normal"))
+chart.Histogram(assetRet, main = "Skew and Kurt", methods = c("add.centered", "add.rug"))
+chart.Histogram(assetRet, main = "Risk Measures", methods = c("add.risk"))
+
+layout(c(1,1))
+if(! exists("Rf")){ Rf <- 0.08/52 } # else continue. Presuming long-term inflation at 8% CAGR.
+if(! exists("Reqwt.rebalQtr")){
+  Reqwt.rebalQtr <- Return.portfolio(R, rebalance_on="quarters") # rowSums(R) /
+} # else continue
+chart.RiskReturnScatter(assetRet, Rf=Rf, main="Risk-Reward tradeoff in trailing training window")
+  # sharpe.ratio = NULL, add.names = NULL. Beware: Risk =/= ES component!
+  # It might be StDev or ES univariate/single marginal.
+charts.RollingRegression(Ra=R[, names(pfLastWts.sortGt0)], Rb=Reqwt.rebalQtr, width=52, Rf=Rf, colorset=tim12equal,
+  lwd=2) # rich12equal)
+
+
+### TBD:
+# - Serve this as a Jupyter Notebook with the bt file that users can upload into Google Colab and run DIY.
+# - Include min AUM at each rebalancing, conditional to minShareCount that's multiplied to satisfy {Natural}.
+# -done: Include min AUM needed (for last rebalancing). As suggested by ChandruVN.
+# -done: "Tail (loss) significance" as requested by AshutoshSemwal.
+```
+
+
+# Appendix: Runtime Environment
+Here's the runtime environment used. It's reported here for reproducibility:
+```{r Closingv500copy}
+sessionInfo() # Sys.info()[['sysname']]
+```
+
+[500 Invest for 36% CAGR]: <https://github.com/yadevinit/pf4pf>
+[PFRDA]: <https://www.pfrda.org.in/>
