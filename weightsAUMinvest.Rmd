@@ -9,19 +9,32 @@ knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(cache = TRUE) # , cache.path='cache/')
 ```
 
-Here, the [author](mailto:yadevinit@gmail.com) illustrates a particular `bt77` Portfolio-optimization rebalancing selected from an earlier research viewpoint [500 Invest for 36% CAGR]: to move it from its latest-rebalancing weights to the (Assets Under Management) AUM monies required to invest using it where fractional shares are unsupported. This demonstrates feasibility of really investing with it, of course, without any advice or suitability recommendation to do so for anyone referring to this.
+Here, the [author](mailto:yadevinit@gmail.com) illustrates a particular `bt77` Portfolio-optimization rebalancing selected from an earlier research viewpoint [500 Invest for 36% CAGR]: to move it from its latest-rebalancing weights to the (Assets Under Management) AUM monies required to invest using it where fractional shares are unsupported. This demonstrates feasibility of really investing with it, of course, without any advice or Suitability recommendation to do so for anyone referring to this.
+Looks like INR 4 lakhs (Rs 400,000) suffices to invest on the latest Portfolio rebalancing. And we saw in the previous viewpoint that this `bt77` is one of those whose performance exceeded the return target of 36% CAGR. We also saw there that its Information Ratio exceeded 1 during the period of study when using as benchmark an Equal-Weighted Portfolio rebalancing quarterly across the 380+ stocks being used (an asset universe taken from the `BSE500` market-capitalization-based index).
 
-Looks like INR 4 lakhs (Rs 400,000) suffices to invest on the latest Portfolio rebalancing. And we saw in the previous viewpoint that this `bt77` is one of those whose performance exceeded the return target of 36% CAGR. We also saw there that its Information Ratio exceeded 1 during the period of study when using as benchmark an Equal-Weighted Portfolio rebalancing quarterly across the over 380 stocks being used (an asset universe taken from the `BSE500` market-capitalization-based index).
+Considering that `bt77` has been developed using [Free Open Source Software] and is published reproducibly, the author asserts that it can serve as a benchmark index for (pension) fund management.
 
-Considering that `bt77` has been developed using FOSS (Free Open Source Software) and is published reproducibly, the author asserts that it can serve as a benchmark index.
+- Individual or other investors could use it to negotiate extraordinary performance and incentive structures with their providers of wealth-management services and products. They could also build on it in collaborative or Do-It-Yourself mode.
+- For greater societal impact, [PFRDA] could similarly nudge Pension Fund Managers for [Minimum Assured Returns in DC Pension Systems]. The author is not a qualified Actuarial professional, but browsing through related published content on `www`, there seems to be an underlying belief that the Equity asset category presently permitted within National Pension System (NPS) is limited to the "market return" provided by `NIFTY50` market-capitalization-based index. Continuing that way, the fund has to continue tolerating Drawdowns ("downsides") of 30% to 50% while the upside is unlikely to be over 15% CAGR long term, with 5-10 years of sideways markets every now and then. Almost certainly then, growth would continue to be ordinary while tolerating high Drawdown (or Expected Tail Loss) risk. Instead, what [PFRDA] and India's Ministry of Finance could consider (if not already done so) is extraordinary growth (at possibly-lesser risk as exemplified via `bt77` investible benchmark). Creating that alternative future is consistent with Suitable and sustainable pensions. India's Minister of Finance has invited inputs for the upcoming ["Budget like never before"] ("in a way. 100 years of India wouldn't have seen a Budget being made post-pandemic like this"). As an input, may this proposal find its way forward to transform the wealth ecosystem. Through Clawbacks or other loss-sharing provisions, incentive structures can be harmonized:
+    * Harmony can be in quantum and timing with real positive growth in wealth, e.g., as measured by Net Present Value adjusted by Time Value of Money and Risk Premium.
+    * And creating an exemplar fund-management enterprise as a [Social Business] could (a) deny the incentive of perpetual dividend to owners of Pension-Fund Manager institutions and (b) devote the enterprise's profits and actions solely and maximally for its societal purpose of serving adequate pensions forever. That enterprise could "own" and maintain `bt77` and other outputs of this [Project Portfolios for Pension Funds], as part of causing Peer production (and aggregation) of wealth-management-related cultural and information objects in the Commons. On the advantages of Commons-based Peer production, you can refer http://www.benkler.org/CoasesPenguin.html which says:
 
-    - Individual or other investors could use it to negotiate extraordinary performance and incentive structures with their providers of wealth-management services and products; they could also build on it in collaborative or Do-It-Yourself mode.
-    - For greater societal impact, [PFRDA] could similarly nudge Pension Fund Managers for the committed Minimum Assured Return. The author is not a qualified Actuarial professional, but browsing through related published content on `www`, there seems to be an underlying belief that the Equity asset category presently permitted within National Pension System is limited to the "market return" provided by `NIFTY50` market-capitalization-based index. Continuing that way, the fund has to continue tolerating Drawdowns ("downsides") of 30% to 50% while the upside is less than 20% CAGR long term. Almost certainly then, growth would continue to be ordinary while tolerating high Drawdown (or Expected Tail Loss) risk. Instead, what [PFRDA] and India's Ministry of Finance could consider (if not already done so) is extraordinary growth (at possibly-lesser risk as exemplified via `bt77` investible benchmark). Creating that alternative future is consistent with a Suitable and sustainable pensions. India's Minister of Finance has invited inputs from all for the upcoming Budget, a once-in-a-100-years kind of Budget. May this proposal from the author find its way forward to transform the wealth ecosystem. Through Clawbacks or other loss-sharing provisions, incentive structures can be harmonized:
-    
-    + in quantum and timing with real positive growth in wealth (e.g., as measured by Net Present Value adjusted by Time Value of Money and Risk Premium).
-    + and creating an exemplar fund-management enterprise as a Yunus-style Social Business could (a) deny the incentive of perpetual dividend to owners of Pension-Fund Manager institutions and (b) devote that enterprise's profits and actions solely and maximally for its societal purpose of serving adequate pensions forever. That enterprise could "own" and maintain `bt77` as part of causing Peer production (and aggregation) of wealth-management-related cultural and information artefacts in the Commons. Commons-based Peer production of such artefacts sustainably beats both the markets and companies (or organizations that are hierachically managed for scale), as evidenced by Nobel Laureates in Economics who have studied this space.
+> I suggest
+that we are seeing is the broad and deep emergence of a new, third
+mode of production in the digitally networked environment. I call this
+mode "commons-based peer-production," to distinguish it from the
+property- and contract-based models of firms and markets. Its central
+characteristic is that groups of individuals successfully collaborate
+on large-scale projects following a diverse cluster of motivational
+drives and social signals, rather than either market prices or
+managerial commands. ... The paper also explains why this mode has
+systematic advantages over markets and managerial hierarchies when the
+object of production is information or culture, and where the capital
+investment necessary for production-computers and communications
+capabilities-is widely distributed instead of concentrated.
 
 
+## Portfolio Rebalancing Performance and Weights
 ```{r moSetupv500copy, message=FALSE, include=FALSE, echo=FALSE}
 date()
 # Initialize globals before source():
@@ -47,7 +60,6 @@ flist <- rev(flist) # reverse into the order of execution of rebalancing optimiz
 flistopt <- rev(flistopt)
 ```
 
-## Portfolio Rebalancing Performance and Weights
 ```{r weightsAUMinvest1}
 ### Last revised: 2021Jan05 by Yadevinit@gmail.com.
 print("Presumed parts of gettingStarted.R have a Portfolio optimization rebalancing (eg bt77) before entering this code.")
@@ -243,3 +255,8 @@ sessionInfo() # Sys.info()[['sysname']]
 
 [500 Invest for 36% CAGR]: <https://github.com/yadevinit/pf4pf>
 [PFRDA]: <https://www.pfrda.org.in/>
+[Free Open Source Software]: <https://en.wikipedia.org/wiki/Free_and_open-source_software>
+[Project Portfolios for Pension Funds]: <https://github.com/yadevinit/pf4pf>
+[Minimum Assured Returns in DC Pension Systems]: <https://www.pfrda.org.in/writereaddata/links/annexure%20ii%20to%20mars%20final42942760-b4e1-4483-b465-997a062dcf2f.pdf>
+["Budget like never before"]: <https://www.businesstoday.in/union-budget-2021/news/fm-nirmala-sitharaman-promises-union-budget-2021/story/427048.html>
+[Social Business]: <http://www.muhammadyunus.org/index.php/social-business/social-business>
