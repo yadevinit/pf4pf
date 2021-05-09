@@ -7,3 +7,5 @@ Here are links to sub-Projects emerging within, listed with the most-recent ones
 - [Exploring Objectives with R-Optimization Infrastructure (ROI)](./momentObjective.md).
 - [Risk-free Nay Ratna](./riskfreeNayRatna.md).
 - [Nay Ratna](nayRatna/nayRatna.md).
+
+Disclaimer: This [author](mailto:yadevinit@gmail.com) does not have a Research Advisor's license registered with SEBI (Securities Exchange Board of India). The author and family might hold market positions as per the optimal portfolios shared here. The reader may please consider this Disclaimer for assessing any conflict of interest regarding the use of the knowledge shared here. In fact, as expressed in these research viewpoints, the author stands for extraordinary growth and harmony in (pension-) fund management and has taken actions for moving the regulator (PFRDA) and other wealth-ecosystem players for that.
