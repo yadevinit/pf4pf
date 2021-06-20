@@ -1,7 +1,7 @@
 # pf4pf
 ## Portfolios for Pension Funds
 Here are links to sub-Projects emerging within, listed with the most-recent ones first:
-- [weightsAUMinvest-2021Jun19-2300](./bt77rebal2021Jun/weightsAUMinvest-2021Jun19-2300.pdf) (2021-Jun) has portfolio weights and corresponding share counts from rebalancing of 2021-Jun. (Beware that its text is yet to be updated to match.)
+- [weightsAUMinvest-2021Jun20-1535](./bt77rebal2021Jun/weightsAUMinvest-2021Jun20-1535.pdf) (2021-Jun) has portfolio weights and corresponding share counts from rebalancing of 2021-Jun. Its earlier version [weightsAUMinvest-2021Jun19-2300](./bt77rebal2021Jun/weightsAUMinvest-2021Jun19-2300.pdf) reports rebalancing prior to including a further 100 stocks (with missing data) after using [Imputation of Financial Time Series](https://cran.r-project.org/web/packages/imputeFin/vignettes/ImputeFinancialTimeSeries.html). (Beware that their text is yet to be updated to match.)
 - [weightsAUMinvest-2021Mar22-1200](./bt77rebal2021Mar/weightsAUMinvest-2021Mar22-1200.pdf) (2021-Mar) has portfolio weights and corresponding share counts from rebalancing of 2021-Mar. (Beware that its text is yet to be updated to match.)
 
     + To illustrate its use which is valid till 2021-Jun, basket-trading BUY orders (created on [Zerodha](https://zerodha.com/) platform) can be downloaded in JSON format: (a) rounded for approx. INR Rs 100,000 at [basket1x](./bt77rebal2021Mar/bt77entry2021Mar22.json) and (b) rounded to reduce Tracking Error for a larger 5x investment approx. INR Rs 500,000 at [basket5x](./bt77rebal2021Mar/bt77x5entry2021Mar.json).
