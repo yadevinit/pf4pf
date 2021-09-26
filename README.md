@@ -6,7 +6,7 @@ Here are links to sub-Projects emerging within, listed with the most-recent ones
         + To illustrate its use which is valid till 2021-Dec:
             * Following screenshot aids rebalancing and uses downloadable portfolio share counts [pf2021Sept18](./bt77rebal2021Sept/pfShareCountAdj2021Sept18.txt):
 
-              <img src="./bt77rebal2021Sept/pf4pfBt77-2021Sept20b.png" width="400">
+              <img src="./bt77rebal2021Sept/pf4pfBt77-2021Sept20b.png" width="200">
  
             * Basket-trading BUY orders (excluding existing stock holdings from 2021-Jun and created on [Zerodha](https://zerodha.com/) platform) can be downloaded in JSON format: [basket10x](./bt77rebal2021Sept/bt772021sept10xnoheld.json) and as After-Market (limit) Orders [basket10xAMO](./bt77rebal2021Sept/SeptLimAMOx10n11.json).
         + Following screenshot shows a portfolio growth of over 17% absolute, consistent with over 36% CAGR annualized which is part of the result commitment moving this author:
