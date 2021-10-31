@@ -1,0 +1,487 @@
+---
+title: "INFY Stability, in a World that is"
+output: github_document
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+---
+
+Historical [INFY](https://finance.yahoo.com/quote/INFY.NS/) stock returns for the company [Infosys Technologies Ltd](https://www.infosys.com/) have been considered here as an exemplar investment asset that could be stabilized further and systematically, as guided by [Stable Portfolio Design using Bayesian Change Point Models and Geometric Shape Factors](https://www.openmetrics.ch/post/stable-portfolio-design-using-bayesian-change-point-models-and-geometric-shape-factors-1). What's possible then is stabler holdings and growth in wealth for stakeholders en masse.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+cChosenAsset <- "INFY"
+  # Was till 2021Sept24: colnames(R)[1:5]
+  # "GOLDBEES" # "INFY", "GOLDBEES", or "GLD" ETF of USA.
+stabDateRange <- ifelse(cChosenAsset == "INFY",
+  "1996/", # though "1994-11/" is when INFY data started but many missing days.
+  ""
+); warning("Incomplete INFY data eg recent.")
+cINFYwin.start <- "1996-09-20"; stopifnot(cChosenAsset == "INFY") # coz others are unsupported.
+argIsLogReturns.F.and.wantLogReturn.T <- TRUE
+stopifnot(argIsLogReturns.F.and.wantLogReturn.T) # coz much of following code depends on this.
+cStabPeriod <- "weeks"; cRfWeekly <- (0.08 / 52)
+  # exp(log(1+0.08) / 52) - 1 # Maybe 0.08 / 52 is simple Rf!
+source("stability-helper.R")
+source("gettingStarted-helper.R")
+
+date()
+if((! exists("R")) && (cChosenAsset == "INFY")){
+  dINFY <- read.csv(file="F://pf4pf/data/indices/myNSE-stockLike/INFY-OHLCV (4).csv",
+    header=TRUE, stringsAsFactors=FALSE)
+  dINFY.xts <- xts(x=dINFY$ClosePrice, order.by=as.Date(dINFY$TradeDate, format="%d-%b-%Y"))
+  dSENIFTY <- read.csv(file="F://pf4pf/data/indices/myNSE-stockLike/SENIFTY-OHLCV (3).csv",
+    header=TRUE, stringsAsFactors=FALSE)
+  dSENIFTY.xts <- xts(x=dSENIFTY$ClosePrice,
+    order.by=as.Date(dSENIFTY$TradeDate, format="%d-%b-%Y"))
+  dINFY.dSENIFTY.xts <- merge.xts(dINFY.xts, dSENIFTY.xts, join="inner") # , all.x=TRUE)
+  names(dINFY.dSENIFTY.xts) <- c("INFY", "SENIFTY")
+  str(dINFY.dSENIFTY.xts)
+  R <- myAssetsWithReturnsOverCompletePeriod(
+    argIsLogReturns=(! argIsLogReturns.F.and.wantLogReturn.T),
+    dINFY.dSENIFTY.xts, # Coz matrix is expected.
+    dateRange=stabDateRange, myPeriod=cStabPeriod,
+    wantLogReturn=argIsLogReturns.F.and.wantLogReturn.T)
+  # warning("Beware: not weekly log return.")
+  # df.narm.logret <- xts(x=returns(dINFY.xts, na.rm=TRUE), order.by=index(dINFY.xts))
+    # method=c("continuous", "discrete", "compound", "simple")
+  # plot(dINFY$TradeDate, dINFY$ClosePrice, type="l")
+} else {
+  stopifnot(exists("R") && exists("cChosenAsset"))
+}
+stopifnot(! is.na(max(R)))
+df.narm.logret <- R[,cChosenAsset] # as.data.frame(R). df.narm <- ?
+head(index(df.narm.logret[,1]))
+plot(exp(cumsum(df.narm.logret))) # to see related index starting at 1.
+plot(df.narm.logret) # log returns as is.
+# Incorrect: chart.CumReturns(df.narm.logret)
+df.narm.logret.ts <- as.timeSeries(df.narm.logret)
+  # , time(df.narm.logret))
+# Was till 2021Sept27:
+# eqWtIndex <- as.timeSeries(rowMeans(exp(cumsum(df.narm.logret))),
+#   # For equal weight.
+#   index(df.narm.logret)
+# )
+cIndexStart <- 1 # starts with this value. And log(1) == 0.
+df.narm.logret.ts.cumsum.exp <- as.timeSeries(exp(cumsum(df.narm.logret.ts) - log(cIndexStart)),
+  time(df.narm.logret.ts), # time() coz timeSeries::, whereas index() for zoo::.
+    # Was: index(df.narm.logret.ts))
+  units=colnames((df.narm.logret.ts))
+)
+# warning("exp(log(Pn/P0)) gives Pn/P0 ratio ie as though P0==1.")
+if(dim(df.narm.logret.ts.cumsum.exp)[2] > 1){ # Was till 2021Oct21: df.narm.logret.ts
+  eqWtIndex <- Return.portfolio(Return.calculate(df.narm.logret.ts.cumsum.exp,
+    method="discrete"), weights=NULL, # NULL defaults to equal-weighted pf.
+    # "discrete" for simple (asset-wise) returns. geometric=TRUE for compound return aggregation.
+    geometric=TRUE)
+  # Was till 2021Oct27: eqWtIndex <- rowMeans(df.narm.logret.ts.cumsum.exp)
+    # as.timeSeries() optional maybe.
+  colnames(eqWtIndex) <- myLabel <- "EWI"
+  # paste(colnames(eqWtIndex), sep=".")
+} else {
+  eqWtIndex <- df.narm.logret.ts.cumsum.exp # [,1] might be incorrect coz becomes vector.
+  # colnames(eqWtIndex) inherited already.
+  myLabel <- colnames(eqWtIndex)
+}
+myLabel.i <- myLabel
+  # price or index, not (log) returns.
+  # ref https://stackoverflow.com/questions/55892584/convert-log-returns-to-actual-price-of-a-time-series-forecast-using-r
+stopifnot(periodicity(df.narm.logret.ts)[["scale"]] == "weekly")
+```
+
+## Asset Stability: from Bayesian Change Points to Morlet-Wavelet-Spectrum Analytics
+```{r stabilityAnalytics, echo=FALSE, eval=TRUE, include=TRUE, tidy=FALSE}
+# followed by Bayesian Stability Filtration
+# warning("copy and paste the following directly onto R-Console, not via CTRL-Enter")
+#devAskNewPage(ask=TRUE) # coz par(ask=) is deprecated.
+stable.tix <- list()
+parAnalytics()
+for(m in cMethods){
+  stable.tix[[m]] <- stabilityAnalytics(eqWtIndex, method=m)
+  switch(m,
+    # Was till 2021Jun16: "riskmetrics" = { title(sub=m) },
+    "bcp" = { addRainbow(stable.tix[[m]]);
+      title(sub=paste(myLabel, m, sep=":"));
+      myAddLabel(m) }, # Was till 2021Jun16: [[last(cMethods)]]
+      # addRainbow(analytics, palette=rainbow, a=0.3, b=0.8, K=100)
+      # see Color Palettes in
+      # https://cran.r-project.org/web/packages/PerformanceAnalytics/vignettes/PA-charts.pdf
+    # if(m==cMethods[4]){lambda=0.9} # lambda=EMA indicator weight for sigma & sd
+    # bcpAnalytics(... method=c("prob", "mean", "var") ...)
+    # pcoutAnalytics(... strong=TRUE, k=2, cs=0.25, outbound=0.25 ...)
+    #   -k:k affects lag() for v which is used with cs & outbound for mvoutlier::pcout()
+    { title(sub=paste(myLabel, m, sep=":"));
+      myAddLabel(m) } # for all other method values.
+  )
+}
+stabTix.waveSpec <- waveletSpectrum(eqWtIndex, spar=0.5) # spar=smoothing parameter
+  # at=pretty(eqWtIndex), format="%m/%y")
+  myAddLabel("morlet")
+mustSaveToFile <- FALSE; if(mustSaveToFile){
+  write.csv((stable.tix[[1]]$turns),
+    file=paste0("stabilityOut/", cChosenAsset, "/stableTixTurns", tStamp(), ".csv"))
+  saveRDS(stable.tix, file=paste0("stabilityOut/", cChosenAsset, "/stableTix", tStamp(), ".rds"))
+  saveRDS(stabTix.waveSpec, file=paste0("stabilityOut/", cChosenAsset, "/stableTixWaveSpec",
+    tStamp(), ".rds"))
+} # else continue.
+
+ix <- df.narm.logret.ts # Was: eqWtIndex
+  # Was till 2021Jun08: as.timeSeries(getIxLogReturnsCompleteMonthly())[,1]
+  # was: ix <- as.timeSeries(almostCompleteTails(df.narm.logret)[,1])
+  # ix <- as.timeSeries(df.narm.logret[complete.cases(df.narm.logret), 1])
+  # log returns (not plain index/price). equity.data has returns (without NAs, and not log ones)
+```
+
+## Bayesian Instantaneous Sharpe Ratio Weighted by Stability
+```{r BayesianSharpe, echo=FALSE, eval=TRUE, include=TRUE}
+stabSpec.vec <- (stabSpec.nrow:1) # stabSpec.nrow. (stabSpec.nrow:1). (1:stabSpec.nrow)
+require(TTR)
+stopifnot(exists("eqWtIndex"))
+R.eqWtIndex <- Return.calculate((eqWtIndex), method="discrete") # xts() if needed.
+for(stabSpec.i in stabSpec.vec){
+  myLabel.i <- paste(myLabel, stabSpec.i, stabSpec.label(stabSpec.i), sep=":")
+  print(paste0(myLabel.i, " spec starting."))
+  RewiWin <- if(stabSpec[stabSpec.i,]$useLogReturn){
+    window(ix, start=cINFYwin.start, end=range(time(ix))[2])
+  } else {
+    window(R.eqWtIndex, start=cINFYwin.start, end=range(time(R.eqWtIndex))[2])
+  }
+  # Was till 2021Oct26: RewiWin <- ix # log return
+  # dooh <- bcpWindow(RewiWin[1:cWindowPeriod, 1], lambdaD=0.2, mustWeightStability=1)
+  bcpWR <- bcpWindow.roll(RewiWin, stabSpec.i)
+  # bcpWR <- bcpWindow.roll(RewiWin, stabSpec[stabSpec.i,])
+  # Was till 2021Oct27:
+  # bcpWR <- bcpWindow.roll(RewiWin, windowPeriod=cWindowPeriod, shiftBy=cShiftBy,
+  #   mustWeightStability=stabSpec[stabSpec.i,]$howWeightStability)
+  # bcpWR2 <- bcpWindow.roll(RewiWin, windowPeriod=cWindowPeriod, shiftBy=cShiftBy,
+  #   mustWeightStability=2)
+  # bcpWR3 <- bcpWindow.roll(RewiWin, windowPeriod=cWindowPeriod, shiftBy=cShiftBy,
+  #   mustWeightStability=3)
+  
+  dtkIndicator <- bcpWR # EMAsigPf(mtk, stk, lambdaD)
+  plot(dtkIndicator); myAddLabel("dtk") # expression(d["t,k"])
+  etkSignal <- indicToSig(dtkIndicator, stabSpec.i) #, cSteepPlus=4, cSteepMinus=4*2)
+  # using default steepness multipliers.
+  nAssets <- ncol(RewiWin); wtkWeights <- etkSignal * getWtMax(nAssets) / 100
+  plot(wtkWeights); myAddLabel("wtk") # expression(w["t,k"])
+  # plot(window(wtkWeights, start="2020-01-01", end="2021-12-31"))
+  ix.wtk.all <- Return.portfolio(RewiWin, weights=(as.xts(wtkWeights)), # coz expects as.xts()!
+    geometric=FALSE, verbose=TRUE) # assuming perfect execution as per wtkWeights
+  ix.wtk <- ix.wtk.all$returns
+
+  mustSaveToFile <- TRUE; if(mustSaveToFile){
+    saveRDS(wtkWeights, file=paste0("stabilityOut/", cChosenAsset, "/wtkWeights", stabSpec.i,
+      tStamp(), ".rds"))
+  } # else continue.
+
+  ix.wtk.start <- time(first(ix.wtk)); ix.wtk.end <- time(last(ix.wtk))
+  ix.win <- window(RewiWin, start=ix.wtk.start, end=ix.wtk.end)
+  eqWtIndex.win <- window(eqWtIndex, start=ix.wtk.start, end=ix.wtk.end)
+  # charts.PerformanceSummary(ix.win,
+  #   geometric=compoundGeometric(stabSpec[stabSpec.i,]$useLogReturn)); myAddLabel("")
+  charts.PerformanceSummary(ix.wtk,
+    geometric=compoundGeometric(stabSpec[stabSpec.i,]$useLogReturn));
+    myAddLabel("wtk") # expression(w["t,k"])
+  # chart.CumReturns(ix.wtk,
+  #   geometric=compoundGeometric(stabSpec[stabSpec.i,]$useLogReturn));
+  #   myAddLabel(expression(w["t,k"]))
+  chart.CaptureRatios(Ra=ix.wtk, Rb=ix.win); myAddLabel("wtk") # expression(w["t,k"])
+    # myAddLabel(expression(R[a]==w["t,k"]))
+  # [above that (diagonal) line the UpCapture exceeds the DownCapture, and vice versa].
+  print("About to chart.RelativePerformance().") # Changed charts' order 2021Oct29.
+  mustSaveToFile <- TRUE; if(mustSaveToFile){
+    tmp1.fname <- paste0("stabilityOut/", cChosenAsset, "/relPerf", stabSpec.i, ".rds")
+    saveRDS(list(ix.wtk, ix.win, myLabel.i, stabSpec.i), file=tmp1.fname)
+    # arg.chart.RelativePerformance <- unlist(readRDS(file=tmp1.fname))
+    # stabSpec.i <- arg.chart.RelativePerformance[4];
+    # myLabel.i <- arg.chart.RelativePerformance[3];
+    # chart.RelativePerformance(Ra=arg.chart.RelativePerformance[1],
+    #   Rb=arg.chart.RelativePerformance[2], ylog=FALSE); myAddLabel("wtk")
+  } # else continue.
+  chart.RelativePerformance(Ra=ix.wtk, Rb=ix.win, ylog=FALSE)
+    myAddLabel("wtk") # expression(w["t,k"]) # Beware: missing in Knitted output!!
+  # [The value of the chart is less important than the slope of the line. If the slope is
+  # positive, the first asset (numerator) is outperforming the second, and vice versa.]
+  print(table.ProbOutPerformance(R=head(ix.wtk, -1),
+    # coz ix.wtk has an extra row at end coz forecast! alt: textplot().
+    Rb=ix.win, period_lengths=c(1,  4* (3^(0:2)),  52 * c(1:7))))
+  # c(1, 3, 6, 9, 12, 18, 36) * c(1,36))
+  # period_lengths >= 104 (weeks) show >56% chance of outperformance by stabilized INFY pf!
+  # That means 2 years or more, given weekly return data.
+  wtkWeights.adj <- weightsAnalyze(wtkWeights)
+  # plot(wtkWeights.adj); myAddLabel("wtk.adj")
+}
+```
+
+```{r relPerf, echo=FALSE, eval=FALSE, include=FALSE}
+## Relative Performance: Stabilized Asset vs. As-Is Asset (Index)
+for(stabSpec.i in stabSpec.vec){
+  tmp1.fname <- paste0("stabilityOut/", cChosenAsset, "/relPerf", stabSpec.i, ".rds")
+  # saveRDS(list(ix.wtk, ix.win, myLabel.i, stabSpec.i), file=tmp1.fname)
+  arg.chart.RelativePerformance <- (readRDS(file=tmp1.fname)) # unlist() not needed.
+  stopifnot(stabSpec.i == arg.chart.RelativePerformance[[4]]);
+  myLabel.i <- arg.chart.RelativePerformance[[3]];
+  plot.new(); chart.RelativePerformance(Ra=arg.chart.RelativePerformance[[1]],
+    # Still does not get charted by Knit on .Rmd!!!
+    Rb=arg.chart.RelativePerformance[[2]], ylog=FALSE);
+    myAddLabel("wtk") # after plot.new() coz mtext() fails otherwise!
+}
+```
+
+```{r, eval=FALSE, include=FALSE}
+def.par <- par(no.readonly = TRUE) # save default, for resetting...
+# layout(c(1,1,2,2,3,3,4,4,5,5)) #, byrow=TRUE)
+nFigs <- 5; layout(matrix(sort.default(rep(1:nFigs, 2), decreasing=FALSE),
+  nFigs, 1, byrow=TRUE)); layout.show(nFigs)
+plot(eqWtIndex.win)
+plot(ix.win); points(ix.wtk, pch=6, col="green") # timeSeries::points
+plot(dtkIndicator)
+plot(wtkWeights)
+plot(ix.wtk)
+par(def.par)  #- reset to default
+```
+
+
+
+```{r, eval=FALSE, include=FALSE}
+# bcpaOut <- list()
+# for(bcpMeth in cBCPmethod){
+#   bcpaOut[[bcpMeth]] <- bcpAnalytics(ix, spar=0.5, method=bcpMeth)
+# }
+BSR.rollT <- BayesianSharpeRatio.roll(ix[],
+  # Was till 2021Sept28: [1:52*4,], # Was till 2021Sept24: 1:5]
+  windowPeriod=cWindowPeriod, shiftBy=cShiftBy,
+  mustWeightStability=2)
+BSR.rollF <- BayesianSharpeRatio.roll(ix[],
+  # Was till 2021Sept28: [1:52*4,], # Was till 2021Sept24: 1:5]
+  windowPeriod=cWindowPeriod, shiftBy=cShiftBy,
+  mustWeightStability=1)
+# str(BSR.rollF)
+# devAskNewPage(ask=TRUE)
+plot(BSR.rollF[,1], type="l", col="brown")
+plot(BSR.rollT[,1], type="p", pch=3, col="black")
+if(ncol(BSR.rollT) > 1){
+  lines(BSR.rollT[,2], type="l", col="blue")
+  print(paste0("Plotted 2 of ", ncol(BSR.rollT), " time series."))
+} # else continue.
+points(BSR.rollF[,1], type="p", col="brown")
+saveRDS(BSR.rollT, file=paste0("stabilityOut/", cChosenAsset,
+  "/BSR.rollT", tStamp(), ".rds"))
+
+
+stop()
+bcpOut <- bcp(ix, mcmc=500, return.mcmc=TRUE) # can handle multivariate series
+  # mcmc=number of iterations after burnin.
+  # return.mcmc=TRUE => posterior means and the partitions in each iteration are returned
+  # posterior.{mean|var|prob}.
+  # mcmc.{means|rhos} contains the {means for each iteration conditional on the state of the
+  # partition | partitions after each iteration (1 indicates the end of a block)}.
+  # plot(... separated=TRUE...) # for multivariate sequential data
+# TBD add orange curve as average of end-of-month measures & red curve as long-term mean
+devAskNewPage(ask=TRUE) # coz par(ask=) is deprecated.
+plot(bcpOut[["posterior.mean"]], sub=myLabel.i)
+plot(bcpOut[["posterior.var"]], sub=myLabel.i)
+plot(bcpOut[["posterior.prob"]], sub=myLabel.i) # last is NA
+# print(summary(bcpOut)) # beware: long output.
+zetas <- ISWSRI(bcpOut[["posterior.mean"]], bcpOut[["posterior.var"]],
+  bcpOut[["posterior.prob"]])
+ss <- signalStrength(zetas, probs=cProb, windowPeriod=cWindowPeriod)
+ssw <- signalSwitch(ss, values=cValues)
+plot(zetas, type="l", sub=myLabel.i); lines(ss, col="pink")
+# require(fExtremes) # beware: it masks PerformanceAnalytics::{CVar | VaR}
+# pointProcess(ix, u=quantile(ix, 0.99), doplot=TRUE); gpdQPlot(ix)
+# Signal Strength & Style Confidence measures and charts can now be created, but they
+# don't seem to impact the stabilization curves though it reveals much regarding varying
+# stability across countries' markets.
+
+plotIndexEtStabilized(ix, ssw)
+```
+
+## Review of the As-Is Asset Index and Returns
+```{r EWIview, echo=FALSE, eval=TRUE, include=TRUE}
+require(PerformanceAnalytics)
+stopifnot(exists("ix.win")) # Was till 2021Oct29: stopifnot(exists("RewiWin"))
+Rasis.win <- ix.win
+charts.PerformanceSummary(Rasis.win) # avoid myAddLabel("") coz asset as is, not a spec.
+def.par <- par(no.readonly = TRUE) # save default, for resetting...
+layout(rbind(c(1,2),c(3,4)))
+chart.Histogram(Rasis.win, main = "Plain", methods = NULL)
+chart.Histogram(Rasis.win, main = "Density", breaks=40,
+  methods = c("add.density", "add.normal"))
+chart.Histogram(Rasis.win, main="Skew and Kurt", methods=c("add.centered", "add.rug"))
+chart.Histogram(Rasis.win, main = "Risk Measures", methods = c("add.risk"))
+par(def.par) # restore
+# chart.RiskReturnScatter(Rasis.win, Rf=cRfWeekly, main="Trailing 36-Month Performance",
+#   colorset=c("red", rep("black",5), "green"))
+# charts.RollingPerformance(Rasis.win, Rf=cRfWeekly,
+#   colorset = c("red", rep("darkgray",5), "orange", "green"), lwd = 2)
+table.DownsideRisk(Rasis.win, Rf=cRfWeekly)
+chart.VaRSensitivity(Rasis.win) #, clean="geltner") # methods="ModifiedES", clean="boudt")
+Rasis.win.HI <- HurstIndex(Rasis.win); print(paste(round(Rasis.win.HI, digits=2),
+  "HurstIndex", "means returns are",
+  ifelse(Rasis.win.HI > 0.5, "persistent",
+    ifelse(Rasis.win.HI < 0.5, "mean reverting", "totally random"))
+))
+# [between 0.5 and 1 suggests that the returns are persistent. At 0.5, the index suggests
+# returns are totally random. Between 0 and 0.5 it suggests that the returns are mean reverting.]
+```
+
+## Implementation
+[Hedging with Futures](https://zerodha.com/varsity/chapter/hedging-futures/) is one way to implement the recommended change in asset weights without selling or buying the asset itself; the latter might incur more [Impact Cost](https://www1.nseindia.com/products/content/equities/indices/impact_cost.htm#:~:text=Impact%20cost%20represents%20the%20cost,to%20the%20bid%2Dask%20spread.) as well as transaction cost. Related research such as [Hedging performance of Nifty index futures](http://www.igidr.ac.in/conf/money/mfc-13/Hedging%20performance%20of%20Nifty%20index%20futures_Anjali%20Prashad.pdf) could be considered. Options would be another way to implement, e.g., (a) buying `PUT` options to limit the downside to the premiums for the hedge itself and (b) avoiding quarterly-contract orders and instead using possibly multi-year derivative options. Of course, the reader might consider it wiser to keep in background the allocation across asset classes (categories); and maybe attempt a "global optimization" first---and hopefully, diversify away the risk---rather than stabilize locally alone. The reader is invited to explore these further elsewhere or extend this project along these lines.
+
+# Appendix: Runtime Environment
+Here's the runtime environment used. It's reported here for reproducibility:
+```{r appendixEnv}
+sessionInfo() # Sys.info()[['sysname']]
+```
+
+```{r include=FALSE}
+## References
+# Alternative and related approaches to consider for future:
+
+# [Bayesian Stability Concepts for Investment Managers](https://www.rmetrics.org/ebooks-stability)
+# [bcp: An R Package for Performing a Bayesian Analysis of Change Point Problems](https://www.jstatsoft.org/article/view/1599/203)
+# [Bayesian Stability Filtrations](https://www.openmetrics.ch/post/bayesian-stability-filtrations)
+# [Stable Portfolio Design using Bayesian Change Point Models and Geometric Shape Factors](https://www.openmetrics.ch/post/stable-portfolio-design-using-bayesian-change-point-models-and-geometric-shape-factors-1)
+# [Downdraft Hedging: Dynamic Wealth Protection for Equity/Bond Investments](https://www.openmetrics.ch/post/downdraft-hedging)
+# ["Safety on Board" How to Protect Equity Portfolios with Risk Signals Based on Bayesian Change Point Models](https://www.openmetrics.ch/post/safety-on-board-how-to-protect-equity-portfolios-with-risk-signals-based-on-bcp-models)
+
+# [Adaptive Mixture of Student-t Distributions as a Flexible Candidate Distribution for Efficient Simulation: The R Package AdMit](https://www.jstatsoft.org/v29/i03/)
+# [Package `AdMit`](https://github.com/ArdiaD/AdMit)
+# [AdMit: Adaptive Mixtures of Student-t Distributions](https://journal.r-project.org/archive/2009/RJ-2009-003/RJ-2009-003.pdf)
+
+# [Bayesian Forecasting of Value at Risk and Expected Shortfall using Adaptive Importance Sampling](https://www.parisschoolofeconomics.eu/IMG/pdf/Van_Dijk.pdf)
+
+```
+
+```{r AdMit, eval=FALSE, include=FALSE, tidy=FALSE}
+# ref https://www.jstatsoft.org/article/view/v029i03
+#   "Adaptive Mixture of Student-t Distributions: The R Package AdMit".
+require(AdMit)
+require(coda)
+require(fEcofin)
+require(mvtnorm)
+options(digits = 4, max.print = 40, prompt = "R> ")
+
+GelmanMeng <- function(x, A = 1, B = 0, C1 = 3, C2 = 3, log = TRUE)
+{
+  if (is.vector(x))
+    x <- matrix(x, nrow = 1)
+  r <- -0.5 * (A * x[,1]^2 * x[,2]^2 + x[,1]^2 + x[,2]^2
+    - 2 * B * x[,1] * x[,2] - 2 * C1 * x[,1] - 2 * C2 * x[,2])
+  if (!log)
+    r <- exp(r)
+  as.vector(r)
+}
+PlotGelmanMeng <- function(x1, x2)
+{
+  GelmanMeng(cbind(x1, x2), log = FALSE)
+}
+x1 <- x2 <- seq(from = -1.0, to = 6.0, by = 0.02)
+z <- outer(x1, x2, FUN = PlotGelmanMeng)
+image(x1, x2, z, las = 1, col = gray((20:0)/20),
+  cex.axis = 1.1, cex.lab = 1.2,
+  xlab = expression(X[1]), ylab = expression(X[2]))
+box()
+abline(a = 0, b = 1, lty = "dotted")
+
+set.seed(1234)
+outAdMit <- AdMit(KERNEL = GelmanMeng, mu0 = c(0.0, 0.1))
+print(outAdMit)
+
+PlotMit <- function(x1, x2, mit)
+{
+  dMit(cbind(x1, x2), mit = mit, log = FALSE)
+}
+z <- outer(x1, x2, FUN = PlotMit, mit = outAdMit$mit)
+image(x1, x2, z, las = 1, col = gray((20:0)/20),
+  cex.axis = 1.1, cex.lab = 1.2,
+  xlab = expression(X[1]), ylab = expression(X[2]))
+box()
+abline(a = 0, b = 1, lty = "dotted")
+
+par(mfrow = c(2,2))
+for (h in 1:4)
+{
+  mith <- list(p = 1,
+    mu = outAdMit$mit$mu[h,,drop = FALSE],
+    Sigma = outAdMit$mit$Sigma[h,,drop = FALSE],
+    df = outAdMit$mit$df)
+  z <- outer(x1, x2, FUN = PlotMit, mit = mith)
+  image(x1, x2, z, las = 1, col = gray((20:0)/20),
+    cex.axis = 1.1, cex.lab = 1.2,
+    xlab = expression(X[1]), ylab = expression(X[2]))
+  box()
+  abline(a = 0, b = 1, lty = "dotted")
+    title(main = paste("component nr.", h))
+}
+
+
+### Now apply AdMitIS() etc:
+set.seed(1234)
+outAdMitIS <- AdMitIS(KERNEL = GelmanMeng, mit = outAdMit$mit)
+print(outAdMitIS)
+  # [The first component is ghat, the importance
+  # sampling estimator of Ep[g(theta)] ... This is a vector whose length corresponds to the
+  # length of the output of the function G. The second component is NSE, a vector containing
+  # the numerical standard errors (i.e., the square root of the variance of the estimates that
+  # can be expected if the simulations were to be repeated) of the components of ghat. The third
+  # component is RNE, a vector containing the relative numerical eciencies of the components
+  # of ghat ... RNE is an indicator of the eciency of the chosen importance function; if target
+  # and importance densities coincide, RNE equals one, whereas a very poor importance density
+  # will have a RNE close to zero.]
+G.cov <- function(theta, mu)
+{
+  G.cov_sub <- function(x)
+    (x - mu) %*% t(x - mu)
+  theta <- as.matrix(theta)
+  tmp <- apply(theta, 1, G.cov_sub)
+  if (length(mu) > 1)
+    t(tmp)
+  else
+    as.matrix(tmp)
+}
+set.seed(1234)
+outAdMitIS <- AdMitIS(KERNEL = GelmanMeng, G = G.cov,
+  mit = outAdMit$mit, mu = c(1.459, 1.459))
+print(outAdMitIS)
+V <- matrix(outAdMitIS$ghat, 2, 2)
+print(V)
+cov2cor(V)
+
+# [AdMitMH. This function uses the mixture approximation as the candidate density in the
+# independence chain M-H algorithm. ...
+# N is the length of the MCMC sequence of draws; KERNEL is a kernel function k(theta) of the
+# target density p(theta); mit is a list providing information on the mixture approximation.]
+set.seed(1234)
+outAdMitMH <- AdMitMH(KERNEL = GelmanMeng, mit = outAdMit$mit)
+print(outAdMitMH)
+# [The rather high acceptance rate above 50% suggests that the mixture
+# approximates the target density quite well.]
+
+# [The R package coda ... can be used to check the convergence of the
+# MCMC chain and obtain quantities of interest for p(theta). Here, for simplicity, we discard the
+# first 1,000 draws as a burn-in sample ...]
+draws <- as.mcmc(outAdMitMH$draws[1001:1e5,])
+colnames(draws) <- c("X1", "X2")
+summary(draws)$stat
+summary(draws)$stat[,3]^2 / summary(draws)$stat[,4]^2
+  # Time-series SE / Naive SE
+  # [These relative numerical efficiencies reflect the good quality of the candidate density
+  # in the independence chain M-H algorithm.]
+
+
+### [4. Illustration II: Mixture of ARCH(1) model]
+# [... following strategies:
+# AdMit IS importance sampling using an adaptive mixture of Student-t distributions as the
+# importance density. ...
+# AdMit M-H independence chain M-H using an adaptive mixture of Student-t distributions
+# as the candidate density. ...
+# We apply our Bayesian estimation methods to daily observations of the Deutschmark vs
+# British Pound (DEM/GBP) foreign exchange log-returns. ...
+# In practice, for highly non-elliptical posterior
+# distributions in econometric models, independence chain M-H often leads to acceptance rates
+# below 10%. ...
+# Both for investigating means and tails of the joint posterior distribution the adaptive
+# approach is preferable.
+# ]
+
+```
