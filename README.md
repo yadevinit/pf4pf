@@ -1,7 +1,7 @@
 # pf4pf
 ## Portfolios for Pension Funds
 Here are links to sub-Projects emerging within, listed with the most-recent ones first:
-- [Stability](./stability.md#infy-stability-in-a-world-that-is).
+- [Explaining the Stability Simulations](./stabilityExplain.md#explaining-the-stability-simulations) explains [Stability](./stability.md#infy-stability-in-a-world-that-is). It seems suitable for those who prefer to stabilize an investable asset, possibly at scale and in addition to using a portfolio-optimization approach to diversify away some of that asset's risks.
 - Weights to AUM to Invest: following are rebalancing outputs and investment illustrations:
     * 2021-Sept: [weightsAUMinvest-2021Sept20-0825](./bt77rebal2021Sept/preview-1dac7d3b1bb7html-2021Sept20-0825.pdf) has portfolio weights and corresponding share counts from rebalancing of 2021-Sept. (Beware that its paragraphs' text is yet to be updated to match, but outputs of code-session blocks are valid.)
         + To illustrate its use which is valid till 2021-Dec:
