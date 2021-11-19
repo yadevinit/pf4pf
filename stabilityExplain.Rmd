@@ -1,0 +1,217 @@
+---
+title: "Explaining the Stability Simulations"
+output: github_document
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+---
+
+Don't want to let go? [Bayesian Stability concepts](https://www.openmetrics.ch/post/stable-portfolio-design-using-bayesian-change-point-models-and-geometric-shape-factors-1) offer a way to hold on to investable assets such as [INFY](https://finance.yahoo.com/quote/INFY.NS/). A (work-in-progress) research viewpoint
+[INFY Stability, in a World that is](https://github.com/yadevinit/pf4pf/blob/main/stability.md#infy-stability-in-a-world-that-is)  simulates 15 Bayesian stabilizations and observes most of them reducing weights (exposure). A text search for "`INFY:4:`" in that viewpoint takes you to a simulation #4 that recommends holding in full weight and last recommended weight reduction (and subsequent restoration) in early 2020. That simulation's Performance chart shows about 45% Drawdown in 2000 that recovered by 2004, whereas INFY had shown an 80% Drawdown and recovered later.
+
+```{r setup, include=FALSE}
+# knitr::opts_chunk$set(echo = TRUE)
+# [
+# Error: Functions that produce HTML output found in document targeting markdown_github output...
+#   always_allow_html: true
+# Note however that the HTML output will not be visible in non-HTML formats.
+# ]
+cChosenAsset <- "INFY"
+  # Was till 2021Sept24: colnames(R)[1:5]
+  # "GOLDBEES" # "INFY", "GOLDBEES", or "GLD" ETF of USA.
+stabDateRange <- ifelse(cChosenAsset == "INFY",
+  "1996/", # though "1994-11/" is when INFY data started but many missing days.
+  ""
+); warning("Incomplete INFY data eg recent.")
+cINFYwin.start <- "1996-09-20"; stopifnot(cChosenAsset == "INFY") # coz others are unsupported.
+argIsLogReturns.F.and.wantLogReturn.T <- TRUE
+stopifnot(argIsLogReturns.F.and.wantLogReturn.T) # coz much of following code depends on this.
+cStabPeriod <- "weeks"; cRfWeekly <- (0.08 / 52)
+  # exp(log(1+0.08) / 52) - 1 # Maybe 0.08 / 52 is simple Rf!
+source("stability-helper.R")
+source("gettingStarted-helper.R")
+
+date()
+if((! exists("R")) && (cChosenAsset == "INFY")){
+  dINFY <- read.csv(file="F://pf4pf/data/indices/myNSE-stockLike/INFY-OHLCV (4).csv",
+    header=TRUE, stringsAsFactors=FALSE)
+  dINFY.xts <- xts(x=dINFY$ClosePrice, order.by=as.Date(dINFY$TradeDate, format="%d-%b-%Y"))
+  dSENIFTY <- read.csv(file="F://pf4pf/data/indices/myNSE-stockLike/SENIFTY-OHLCV (3).csv",
+    header=TRUE, stringsAsFactors=FALSE)
+  dSENIFTY.xts <- xts(x=dSENIFTY$ClosePrice,
+    order.by=as.Date(dSENIFTY$TradeDate, format="%d-%b-%Y"))
+  dINFY.dSENIFTY.xts <- merge.xts(dINFY.xts, dSENIFTY.xts, join="inner") # , all.x=TRUE)
+  names(dINFY.dSENIFTY.xts) <- c("INFY", "SENIFTY")
+  str(dINFY.dSENIFTY.xts)
+  R <- myAssetsWithReturnsOverCompletePeriod(
+    argIsLogReturns=(! argIsLogReturns.F.and.wantLogReturn.T),
+    dINFY.dSENIFTY.xts, # Coz matrix is expected.
+    dateRange=stabDateRange, myPeriod=cStabPeriod,
+    wantLogReturn=argIsLogReturns.F.and.wantLogReturn.T)
+  # warning("Beware: not weekly log return.")
+  # df.narm.logret <- xts(x=returns(dINFY.xts, na.rm=TRUE), order.by=index(dINFY.xts))
+    # method=c("continuous", "discrete", "compound", "simple")
+  # plot(dINFY$TradeDate, dINFY$ClosePrice, type="l")
+} else {
+  stopifnot(exists("R") && exists("cChosenAsset"))
+}
+stopifnot(! is.na(max(R)))
+df.narm.logret <- R[,cChosenAsset] # as.data.frame(R). df.narm <- ?
+head(index(df.narm.logret[,1]))
+plot(exp(cumsum(df.narm.logret))) # to see related index starting at 1.
+plot(df.narm.logret) # log returns as is.
+# Incorrect: chart.CumReturns(df.narm.logret)
+df.narm.logret.ts <- as.timeSeries(df.narm.logret)
+  # , time(df.narm.logret))
+# Was till 2021Sept27:
+# eqWtIndex <- as.timeSeries(rowMeans(exp(cumsum(df.narm.logret))),
+#   # For equal weight.
+#   index(df.narm.logret)
+# )
+cIndexStart <- 1 # starts with this value. And log(1) == 0.
+df.narm.logret.ts.cumsum.exp <- as.timeSeries(exp(cumsum(df.narm.logret.ts) - log(cIndexStart)),
+  time(df.narm.logret.ts), # time() coz timeSeries::, whereas index() for zoo::.
+    # Was: index(df.narm.logret.ts))
+  units=colnames((df.narm.logret.ts))
+)
+# warning("exp(log(Pn/P0)) gives Pn/P0 ratio ie as though P0==1.")
+if(dim(df.narm.logret.ts.cumsum.exp)[2] > 1){ # Was till 2021Oct21: df.narm.logret.ts
+  eqWtIndex <- Return.portfolio(
+    Return.calculate(df.narm.logret.ts.cumsum.exp, method="discrete"),
+    weights=NULL, # NULL defaults to equal-weighted pf.
+    # "discrete" for simple (asset-wise) returns. geometric=TRUE for compound return aggregation.
+    geometric=TRUE)
+  # Was till 2021Oct27: eqWtIndex <- rowMeans(df.narm.logret.ts.cumsum.exp)
+    # as.timeSeries() optional maybe.
+  colnames(eqWtIndex) <- myLabel <- "EWI"
+  # paste(colnames(eqWtIndex), sep=".")
+} else {
+  eqWtIndex <- df.narm.logret.ts.cumsum.exp # [,1] might be incorrect coz becomes vector.
+  # colnames(eqWtIndex) inherited already.
+  myLabel <- colnames(eqWtIndex)
+}
+myLabel.i <- myLabel
+  # price or index, not (log) returns.
+  # ref https://stackoverflow.com/questions/55892584/convert-log-returns-to-actual-price-of-a-time-series-forecast-using-r
+df.narm.logret.ts.periodicity.scale <- periodicity(df.narm.logret.ts)[["scale"]]
+stopifnot(df.narm.logret.ts.periodicity.scale == "weekly")
+```
+
+
+## Relative Performance: Stabilized Asset vs. As-Is Asset (Index)
+Instantaneous (Stability-weighted) Bayesian Sharpe Ratio (ISWBSR) has been chosen as the measure for stabilization. For its simulation, the following is a brief glossary of terms that have to be specified:
+
+* `howWeightStability` specifies whether to weight using `1-probBCP` or `1/probBCP` where `probBCP` is the posterior probability of a Bayesian Change Point.
+* `steepPlus` and `steepMinus` specify factors to use with rising and declining indicators when converting to a signaling range of `0` to `1` as per a sigmoid logistic model.
+* `varianceS` specifies whether to use a square root (for deviation) or posterior variance as is.
+* `aggMethod` specifies whether to aggregate Sharpe Ratio using EMA (Exponential Moving Average) or Median.
+* `TDR` specifies a (Position) Threshold Decision Rule.
+* `TDRquantileProb` specifies a quantile probability whose exceedances (over a recent window) support a `TDR`.
+
+(In case the reader seeks further details, she may please refer to [Bayesian Stability concepts](https://www.openmetrics.ch/post/stable-portfolio-design-using-bayesian-change-point-models-and-geometric-shape-factors-1).)
+Now the following code-session output tabulates the specifications of the simulations and then plots their (stabilized) relative performances vs. the (unstabilized) as-is asset.
+```{r relPerf, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# , fig.keep='all', echo=TRUE, eval=TRUE, include=TRUE}
+require(knitr)
+# require(kableExtra)
+# kbl(stabSpec, row.names=1:nrow(stabSpec), digits=2) %>% # Prefer kbl() over kable().
+#   kable_styling(latex_options="scale_down")
+  # table formatting. Alt: %>% kable_styling(font_size = 7). full_width=FALSE.
+# [the image size is controlled by two chunk options: fig.width and fig.height, both in inches;
+# see http://yihui.name/knitr/options] says https://github.com/yihui/knitr/issues/246.
+print(stabSpec)
+stabSpec.vec <- (stabSpec.nrow:1) # stabSpec.nrow. (stabSpec.nrow:1). (1:stabSpec.nrow)
+tmp1.fname <- paste0("stabilityOut/", cChosenAsset, "/relPerf")
+Ragg <- NULL; for(stabSpec.i in stabSpec.vec){
+  arg.chart.RelativePerformance <- readRDS(file=paste0(tmp1.fname, stabSpec.i, ".rds"))
+    # unlist() not needed.
+  stopifnot(stabSpec.i == arg.chart.RelativePerformance[[4]])
+  Ragg <- cbind(Ragg, arg.chart.RelativePerformance[[1]])
+  colnames(Ragg)[ncol(Ragg)] <- paste0("pfr", stabSpec.i)
+  # plot.new(); 
+}
+# png(filename=paste0(tmp1.fname, ".png")) # stabSpec.i
+# layout(matrix(c(1))) # 3 rows, 1 column
+# op <- par(no.readonly=TRUE)
+# plot.new()
+colorset.my <- tol21rainbow # tol15rainbow
+Ragg.ts <- timeSeries(Ragg)[-nrow(Ragg),] # xts otherwise. And without the last empty row.
+labels.my <- gsub(pattern="pfr", replacement="", x=colnames(Ragg.ts))
+chart.RelativePerformance(Ra=Ragg.ts,
+  # Still does not get charted by Knit on .Rmd!!!
+  Rb=arg.chart.RelativePerformance[[2]], legend.loc="topleft", ylog=FALSE,
+  colorset=colorset.my) # rainbow12equal); # (1:ncol(Ragg))); # rich8equal)
+  # ref https://www.r-bloggers.com/2013/02/the-paul-tol-21-color-salute/.
+  # myLabel.i <- arg.chart.RelativePerformance[[3]]; myAddLabel("wtk")
+  # after plot.new() coz mtext() fails otherwise!
+  # legend(x="bottom", legend=colnames(Ragg))
+# myy <- (last(Ragg[-nrow(Ragg),])); myx <- time(myy)
+# text(x=myx, y=myy, labels=colnames(myy)); text(myy ~ myx, labels=colnames(myy))
+Ragg.ts.cum <- Return.cumulative(Ragg.ts, geometric=TRUE)
+Rb.cum <- Return.cumulative(arg.chart.RelativePerformance[[2]], geometric=TRUE)
+# plot(Ragg.ts.cumprod)
+Ragg.ts.Rr <- Ragg.ts.cum / Rb.cum[1,1] # ; print(Ragg.ts.Rr)
+  # Return.relative(Ra=Ragg.ts, Rb=arg.chart.RelativePerformance[[2]], ylog=FALSE)
+at.my <- Ragg.ts.Rr # Was c(1:15)/(15/2) # init
+mtext(labels.my, side=4, at=at.my, col=colorset.my, cex=3/4)
+
+# par(op)
+# dev.off()
+```
+
+```{r stabSpecVec, echo=FALSE}
+stabSpec.i <- 4; stabSpecVec <- stabSpec[stabSpec.i,]
+```
+Here are few observations from the above outputs:
+
+* The "non-greenish" curves show a relative performance that's smoother (over time) but lesser than the rest, i.e., presence of a Thresholding Decision Rule (`TDR=2`) underperforms stabilizations where it is absent (`TDR=1`).
+* Across the various specified stabilizations, relative performances seem to be flat. In the case of the "non-greenish" ones, relative performances seem to be declining in recent years.
+* Stabilization specification #`r stabSpec.i` seems to relatively perform better than the others.
+
+## Example Stabilization #`r stabSpec.i`
+```{r dtkIndicator, echo=FALSE}
+print(stabSpecVec)
+# ![`dtkIndicator`](https://github.com/yadevinit/pf4pf/blob/main/stability_files/figure-markdown_github/BayesianSharpe-56.png) fails!!
+# ?raw=true gets you QR-code that displays; otherwise, just a `?` appears!
+knitr::include_graphics("https://github.com/yadevinit/pf4pf/blob/main/stability_files/figure-markdown_github/BayesianSharpe-56.png?raw=true")
+```
+As mentioned earlier, the `r df.narm.logret.ts.periodicity.scale`
+time series of returns of the asset (index) have been taken as data input. With the stabilization specification #`r stabSpec.i`, 
+the adjacent figure reproduces its indicator chosen to be the ISWBSR measure using estimates of Bayesian Change Points from rolling windows of width `r stabSpecVec$windowPeriod`, each time shifted by `r stabSpecVec$shiftBy`.
+
+That indicator is converted to a signal with a weight spanning from `0` to `1` as shown in adjacent graph.
+```{r wtkWeights, echo=FALSE}
+knitr::include_graphics("https://github.com/yadevinit/pf4pf/raw/main/stability_files/figure-markdown_github/BayesianSharpe-57.png?raw=true")
+```
+
+The performance summary of the stabilized signal is charted in the adjacent figure.
+```{r chartsPerformanceSummary, echo=FALSE}
+knitr::include_graphics("https://github.com/yadevinit/pf4pf/raw/main/stability_files/figure-markdown_github/BayesianSharpe-58.png?raw=true")
+```
+
+Its Capture Ratios show more Upside than Downside being captured of the underlying asset (index).
+```{r chartCaptureRatios, echo=FALSE}
+knitr::include_graphics("https://github.com/yadevinit/pf4pf/raw/main/stability_files/figure-markdown_github/BayesianSharpe-59.png?raw=true")
+```
+
+Consider the table of outperformance probabilities there. Windows of (`period_lengths >= 260` or) 5 years or more show that's when such a stabilized asset is `0.51` likelier to outperform the as-is asset (index); shorter time windows show the as-is asset outperforms the stabilization. 20th percentile is `0.179`, i.e., 1/5th of windows expose less than `18%` of the asset to the markets; hedging could be in effect then. Alternatively if you consider stabilization #14, windows of (`period_lengths >= 104` or) 2 years or more show that's when such a stabilized asset is `0.537` likelier to outperform the as-is asset (index). 20th percentile is `0.40`, i.e., 1/5th of windows expose less than `40%` of the asset to the markets.
+
+Next considering the step-like discrete exposure expected by minimum lot sizes of Futures contracts, there's a minimum implementable exposure weight; adjusting for that gives the adjacent signal curve.
+```{r wtkWeightsAdj, echo=FALSE}
+knitr::include_graphics("https://github.com/yadevinit/pf4pf/raw/main/stability_files/figure-markdown_github/BayesianSharpe-60.png?raw=true")
+```
+
+"William Sharpe now recommends [Information Ratio](https://en.wikipedia.org/wiki/Information_ratio) preferentially to the original Sharpe
+Ratio", says [`R`-package `PerformanceAnalytics`](https://cran.r-project.org/package=PerformanceAnalytics). If you consider that measure to order the various stabilizations that have been simulated, the following code-session output prefers stabilization #4 with the highest Information Ratio `0.162`.
+```{r infoRatio, echo=FALSE}
+stopifnot(df.narm.logret.ts.periodicity.scale == "weekly") # coz scale=52 chosen ahead.
+Ragg.ts.IR <- InformationRatio(Ra=Ragg.ts, Rb=arg.chart.RelativePerformance[[2]], scale=52)
+  # legend.loc="topleft", ylog=FALSE, colorset=colorset.my)
+  # [William Sharpe now recommends InformationRatio preferentially to the original Sharpe
+  # Ratio], says a vignette.
+Ragg.ts.IR.t <- t(Ragg.ts.IR)
+Ragg.ts.IR.ord <- Ragg.ts.IR.t[order(Ragg.ts.IR.t, decreasing=TRUE),]
+  # cbind(Ragg.ts.IR.t, IRorder=order(Ragg.ts.IR.t[,1], decreasing=TRUE))
+  # cbind(IR=Ragg.ts.IR[1,], IRorder=order(Ragg.ts.IR[1,], decreasing=TRUE))
+print(round(Ragg.ts.IR.ord, digits=3))
+```
+
+[Implementation](https://github.com/yadevinit/pf4pf/blob/main/stability.md#implementation) considerations have already been outlined in the earlier research viewpoint.
