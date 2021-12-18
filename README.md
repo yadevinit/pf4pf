@@ -3,12 +3,10 @@
 Here are links to sub-Projects emerging within, listed with the most-recent ones first:
 - [Explaining the Stability Simulations](./stabilityExplain.md#explaining-the-stability-simulations) explains [Stability](./stability.md#infy-stability-in-a-world-that-is). It seems suitable for those who prefer to stabilize an investable asset, possibly at scale and in addition to using a portfolio-optimization approach to diversify away some of that asset's risks.
 - Weights to AUM to Invest: following are rebalancing outputs and investment illustrations:
-    * 2021-Dec: [weightsAUMinvest-2021Dec](./bt77rebal2021Dec/preview-1ba847a43c47.html-weightsAUMinvest-2021Dec18-1509.pdf) has portfolio weights and corresponding share counts from rebalancing of 2021-Dec. [Excluded list](./bt77rebal2021Dec/gNamesNA0.txt) has stocks that did not have enough data from start of simulation.
+    * 2021-Dec: [weightsAUMinvest-2021Dec](./bt77rebal2021Dec/preview-1ba847a43c47.html-weightsAUMinvest-2021Dec18-1509.pdf) has portfolio weights and corresponding share counts from rebalancing of 2021-Dec. [Excluded list](./bt77rebal2021Dec/gNamesNA0.txt) has stocks that did not have enough data from start of simulation. [Screenshot](./bt77rebal2021Dec/investable2021Dec18.png) aids rebalancing and uses [downloadable portfolio share counts](./bt77rebal2021Dec/investable2021Dec.xlsx). (Beware that its paragraphs' text is yet to be updated to match, but outputs of code-session blocks are valid.)
     * 2021-Sept: [weightsAUMinvest-2021Sept20-0825](./bt77rebal2021Sept/preview-1dac7d3b1bb7html-2021Sept20-0825.pdf) has portfolio weights and corresponding share counts from rebalancing of 2021-Sept. (Beware that its paragraphs' text is yet to be updated to match, but outputs of code-session blocks are valid.)
         + To illustrate its use which is valid till 2021-Dec:
-            * Following screenshot aids rebalancing and uses downloadable portfolio share counts [pf2021Sept18](./bt77rebal2021Sept/pfShareCountAdj2021Sept18.csv):
-
-              <img src="./bt77rebal2021Sept/pf4pfBt77-2021Sept20b.png" width="175">
+            * [Screenshot](./bt77rebal2021Sept/pf4pfBt77-2021Sept20b.png) aids rebalancing and uses downloadable portfolio share counts [pf2021Sept18](./bt77rebal2021Sept/pfShareCountAdj2021Sept18.csv).
  
             * Basket-trading BUY orders (excluding existing stock holdings from 2021-Jun and created on [Zerodha](https://zerodha.com/) platform) can be downloaded in JSON format: [basket10x](./bt77rebal2021Sept/bt772021sept10xnoheld.json) and as After-Market (limit) Orders [basket10xAMO](./bt77rebal2021Sept/SeptLimAMOx10n11.json).
         + Following screenshot shows a portfolio growth of over 17% absolute, consistent with over 36% CAGR annualized which is part of the result commitment moving this author:
