@@ -6,7 +6,7 @@ Here are links to sub-Projects emerging within, listed with the most-recent ones
     * 2021-Dec: [weightsAUMinvest-2021Dec](./bt77rebal2021Dec/preview-1ba847a43c47.html-weightsAUMinvest-2021Dec18-1509.pdf) has portfolio weights and corresponding share counts from rebalancing of 2021-Dec. [Excluded list](./bt77rebal2021Dec/gNamesNA0.txt) has stocks that did not have enough data from start of simulation.
     * 2021-Sept: [weightsAUMinvest-2021Sept20-0825](./bt77rebal2021Sept/preview-1dac7d3b1bb7html-2021Sept20-0825.pdf) has portfolio weights and corresponding share counts from rebalancing of 2021-Sept. (Beware that its paragraphs' text is yet to be updated to match, but outputs of code-session blocks are valid.)
         + To illustrate its use which is valid till 2021-Dec:
-            * Following screenshot aids rebalancing and uses downloadable portfolio share counts [pf2021Sept18](./bt77rebal2021Sept/pfShareCountAdj2021Sept18.txt):
+            * Following screenshot aids rebalancing and uses downloadable portfolio share counts [pf2021Sept18](./bt77rebal2021Sept/pfShareCountAdj2021Sept18.csv):
 
               <img src="./bt77rebal2021Sept/pf4pfBt77-2021Sept20b.png" width="175">
  
