@@ -3,6 +3,7 @@
 Here are links to sub-Projects emerging within, listed with the most-recent ones first:
 - [Explaining the Stability Simulations](./stabilityExplain.md#explaining-the-stability-simulations) explains [Stability](./stability.md#infy-stability-in-a-world-that-is). It seems suitable for those who prefer to stabilize an investable asset, possibly at scale and in addition to using a portfolio-optimization approach to diversify away some of that asset's risks.
 - Weights to AUM to Invest: following are rebalancing outputs and investment illustrations:
+    * 2021-Dec: [weightsAUMinvest-2021Dec](./bt77rebal2021Dec/preview-1ba847a43c47.html-weightsAUMinvest-2021Dec18-1509.pdf) has portfolio weights and corresponding share counts from rebalancing of 2021-Dec. [Excluded list](./bt77rebal2021Dec/gNamesNA0.txt) has stocks that did not have enough data from start of simulation.
     * 2021-Sept: [weightsAUMinvest-2021Sept20-0825](./bt77rebal2021Sept/preview-1dac7d3b1bb7html-2021Sept20-0825.pdf) has portfolio weights and corresponding share counts from rebalancing of 2021-Sept. (Beware that its paragraphs' text is yet to be updated to match, but outputs of code-session blocks are valid.)
         + To illustrate its use which is valid till 2021-Dec:
             * Following screenshot aids rebalancing and uses downloadable portfolio share counts [pf2021Sept18](./bt77rebal2021Sept/pfShareCountAdj2021Sept18.txt):
